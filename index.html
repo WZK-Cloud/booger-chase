@@ -1,0 +1,3183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>鼻屎怪追逐大地图游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{
+  height:100%;overflow:hidden;background:#111;touch-action:none;
+  font-family:Arial, "Microsoft YaHei", sans-serif;
+}
+#gameScreen{display:none;width:100%;height:100%;position:relative;}
+#gameCanvas{display:block;margin:0 auto;background:#222;}
+.info{color:#fff;text-align:center;padding:4px;font-size:14px;}
+.hud{position:fixed;top:8px;left:8px;color:#fff;font-size:16px;z-index:10;}
+.hud2{position:fixed;top:32px;left:8px;color:#ffb060;font-size:16px;z-index:10;}
+.hud3{position:fixed;top:56px;left:8px;color:#88ddff;font-size:14px;z-index:10;}
+.hud4{position:fixed;top:80px;left:8px;color:#aaffaa;font-size:12px;z-index:10;white-space:pre-line;}
+.minimap{
+  position:fixed;top:8px;right:8px;width:160px;height:160px;
+  border:2px solid #777;background:rgba(0,0,0,0.6);z-index:10;
+}
+.joystickWrap{position:fixed;left:20px;bottom:20px;width:140px;height:140px;display:none;}
+.joystickBase{
+  width:140px;height:140px;border-radius:50%;
+  background:rgba(80,80,80,0.4);border:2px solid #aaa;position:absolute;
+}
+.joystickKnob{
+  width:50px;height:50px;border-radius:50%;
+  background:rgba(200,200,200,0.7);position:absolute;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+}
+#muteBtn{
+  position:fixed;top:8px;right:180px;z-index:20;
+  background:rgba(0,0,0,0.5);color:#fff;border:2px solid #777;
+  border-radius:8px;padding:6px 10px;font-size:16px;cursor:pointer;
+}
+#homeBtn{
+  position:fixed;top:8px;right:250px;z-index:20;
+  background:rgba(0,0,0,0.5);color:#fff;border:2px solid #777;
+  border-radius:8px;padding:6px 10px;font-size:16px;cursor:pointer;
+}
+#muteBtn:active,#homeBtn:active{background:rgba(255,255,255,0.2)}
+
+#cheatBtn{
+  position:fixed;
+  top:80px;left:20px;
+  z-index:20;
+  width:56px;height:56px;border-radius:50%;
+  background:rgba(15,25,15,0.85);color:#8be26b;
+  border:2px solid #8be26b;
+  font-size:24px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 20px rgba(139,226,107,0.6);
+  user-select:none;touch-action:none;
+  padding:0;
+}
+#cheatBtn:active{box-shadow:0 0 30px rgba(139,226,107,1);}
+#cheatBtn.dragging{cursor:grabbing;box-shadow:0 0 40px rgba(139,226,107,1);}
+
+#cheatPanel{
+  position:fixed;
+  top:150px;left:20px;
+  z-index:30;width:min(360px, 94vw);max-height:75vh;overflow-y:auto;
+  background:rgba(15,25,15,0.95);border:2px solid #8be26b;
+  border-radius:12px;padding:12px 14px;color:#d8ffd0;
+  font-size:13px;display:none;box-shadow:0 0 30px rgba(139,226,107,0.4);
+}
+#cheatPanel h3{
+  font-size:15px;color:#8be26b;margin-bottom:8px;text-align:center;
+  border-bottom:1px solid #3a5a2a;padding-bottom:6px;letter-spacing:2px;
+}
+.cheatRow{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:8px;gap:8px;
+}
+.cheatRow span{flex:1;font-size:12px}
+.cheatRow button{
+  background:#2a4a1a;color:#c8ffb0;border:1px solid #5a8a3a;
+  border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;
+  min-width:56px;font-family:inherit;
+}
+.cheatRow button:active{background:#4a7a2a}
+.cheatRow input[type=number]{
+  width:70px;background:#1a2a1a;color:#c8ffb0;
+  border:1px solid #5a8a3a;border-radius:6px;
+  padding:4px 6px;font-size:12px;font-family:inherit;
+}
+.cheatRow input[type=text]{
+  width:70px;background:#1a2a1a;color:#c8ffb0;
+  border:1px solid #5a8a3a;border-radius:6px;
+  padding:4px 6px;font-size:12px;font-family:inherit;
+}
+
+/* ★ 滑块 + 数字输入框并排 */
+.sliderGroup{
+  display:flex;align-items:center;gap:6px;flex-shrink:0;
+}
+.sliderGroup input[type=range]{
+  width:90px;
+}
+.sliderGroup input[type=number]{
+  width:58px;
+  background:#1a2a1a;color:#c8ffb0;
+  border:1px solid #5a8a3a;border-radius:6px;
+  padding:4px 6px;font-size:12px;font-family:inherit;
+  text-align:center;
+}
+.sliderGroup input[type=number]:focus{
+  outline:none;border-color:#8be26b;
+  box-shadow:0 0 6px rgba(139,226,107,0.5);
+}
+.sliderGroup input[type=number]::-webkit-outer-spin-button,
+.sliderGroup input[type=number]::-webkit-inner-spin-button{
+  -webkit-appearance:none;margin:0;
+}
+.sliderGroup input[type=number]{ -moz-appearance:textfield; }
+
+.weaponGrid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:5px;margin-bottom:8px;
+}
+.weaponGrid button{
+  background:#2a4a1a;color:#c8ffb0;border:1px solid #5a8a3a;
+  border-radius:6px;padding:6px 2px;font-size:11px;cursor:pointer;
+  font-family:inherit;line-height:1.2;
+}
+.weaponGrid button.active{
+  background:#8be26b;color:#0d2405;font-weight:bold;
+  box-shadow:0 0 8px rgba(139,226,107,0.7);
+}
+.weaponGrid button:active{background:#4a7a2a}
+
+.summonBox{
+  background:rgba(0,0,0,0.3);
+  border-left:3px solid #5a8a3a;
+  border-radius:8px;
+  padding:8px;
+  margin-bottom:8px;
+}
+.summonBox select{
+  width:100%;
+  background:#1a2a1a;
+  color:#c8ffb0;
+  border:1px solid #5a8a3a;
+  border-radius:6px;
+  padding:6px 8px;
+  font-size:12px;
+  font-family:inherit;
+  margin-bottom:6px;
+  cursor:pointer;
+}
+.summonBox select:focus{outline:none;border-color:#8be26b;}
+.summonBox button{
+  width:100%;
+  background:#2a4a1a;
+  color:#c8ffb0;
+  border:1px solid #5a8a3a;
+  border-radius:6px;
+  padding:6px;
+  font-size:12px;
+  cursor:pointer;
+  font-family:inherit;
+}
+.summonBox button:active{background:#4a7a2a}
+
+.switch{
+  position:relative;display:inline-block;
+  width:46px;height:24px;flex-shrink:0;
+}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{
+  position:absolute;cursor:pointer;inset:0;
+  background:#444;border-radius:24px;
+  transition:.2s;border:1px solid #666;
+}
+.switch .slider:before{
+  content:"";position:absolute;
+  height:16px;width:16px;left:3px;bottom:3px;
+  background:#aaa;border-radius:50%;
+  transition:.2s;
+}
+.switch input:checked + .slider{
+  background:#2a7fff;border-color:#2a7fff;
+}
+.switch input:checked + .slider:before{
+  transform:translateX(22px);
+  background:#fff;
+}
+
+.subItems{
+  display:none;
+  padding:6px 8px;
+  background:rgba(0,0,0,0.3);
+  border-radius:8px;
+  margin:-4px 0 8px 0;
+  border-left:3px solid #5a8a3a;
+}
+.subItems.open{ display:block; }
+.subItem{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;font-size:12px;color:#b8e0a8;
+}
+.subItem .switch{width:40px;height:20px;}
+.subItem .switch .slider:before{height:14px;width:14px;}
+.subItem .switch input:checked + .slider:before{transform:translateX(20px);}
+
+.sectionTitle{
+  color:#8be26b;font-size:12px;margin:10px 0 6px;
+  border-bottom:1px dashed #3a5a2a;padding-bottom:3px;
+}
+
+#homeScreen{
+  width:100%;height:100%;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  background:radial-gradient(circle at 50% 30%, #2a2a2a 0%, #0d0d0d 80%);
+  color:#fff;text-align:center;padding:20px;overflow-y:auto;
+}
+#homeScreen h1{
+  font-size:clamp(28px, 7vw, 56px);color:#8be26b;
+  text-shadow:0 0 20px rgba(139,226,107,0.6), 0 4px 0 #2d4a1e;
+  margin-bottom:10px;letter-spacing:2px;
+}
+#homeScreen h2{
+  font-size:clamp(14px, 3vw, 20px);color:#bbb;font-weight:normal;margin-bottom:30px;
+}
+.monsterPreview{
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #a9682f, #4d2c0c 80%);
+  box-shadow:0 0 40px rgba(112,66,20,0.8), inset -10px -10px 20px rgba(0,0,0,0.5);
+  margin-bottom:30px;position:relative;animation:bob 2s ease-in-out infinite;
+}
+@keyframes bob{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-12px);}
+}
+#startBtn{
+  font-size:clamp(18px, 4vw, 24px);padding:14px 50px;border:none;border-radius:50px;
+  background:linear-gradient(135deg, #8be26b, #4fa82f);color:#0d2405;
+  font-weight:bold;cursor:pointer;
+  box-shadow:0 6px 0 #2d4a1e, 0 0 30px rgba(139,226,107,0.5);
+  transition:transform 0.08s, box-shadow 0.08s;margin-bottom:30px;letter-spacing:2px;
+}
+#startBtn:active{
+  transform:translateY(4px);
+  box-shadow:0 2px 0 #2d4a1e, 0 0 20px rgba(139,226,107,0.4);
+}
+#startBtn:disabled{
+  background:#555;color:#999;box-shadow:0 6px 0 #333;cursor:not-allowed;
+  animation:pulseDisabled 1.4s ease-in-out infinite;
+}
+@keyframes pulseDisabled{
+  0%,100%{opacity:0.75;}
+  50%{opacity:1;}
+}
+.helpBox{
+  max-width:520px;background:rgba(255,255,255,0.05);border:1px solid #444;
+  border-radius:12px;padding:16px 22px;font-size:14px;line-height:1.9;
+  color:#ccc;text-align:left;
+}
+.helpBox b{color:#8be26b;}
+.helpBox .row{margin-bottom:6px;}
+.helpBox .key{
+  display:inline-block;background:#333;border:1px solid #666;border-radius:5px;
+  padding:1px 8px;margin:0 2px;font-family:monospace;color:#fff;
+}
+#overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.78);
+  color:#fff;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:20px;z-index:999;text-align:center;
+  padding:20px;font-family:Arial;font-weight:bold;
+  font-size:clamp(20px,5vw,32px);
+}
+#overlay .tip{
+  font-size:clamp(12px,3vw,16px);color:#aaa;font-weight:normal;
+}
+</style>
+</head>
+<body>
+
+<div id="homeScreen">
+  <h1>鼻屎怪追逐</h1>
+  <h2>大地图生存射击游戏</h2>
+  <div class="monsterPreview"></div>
+  <button id="startBtn" disabled>加载音乐中…</button>
+  <div class="helpBox" id="helpBox">
+    <div class="row">🎮 <b>移动端</b>：左手摇杆移动，右手点击屏幕发射子弹</div>
+    <div class="row">⌨️ <b>电脑端</b>：<span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> 移动，鼠标左键发射</div>
+    <div class="row">🔫 <b>8 种武器</b>：手枪 / 霰弹 / 激光 / 冲锋 / 狙击 / 三重狙击 / 三向 / 榴弹</div>
+    <div class="row">🛡️ 拾取道具获得：回血 / 加速 / 护盾 / 爆炸弹 / 连射 / 炸弹</div>
+    <div class="row">💀 目标：先击败大鼻屎怪，再清理小鼻屎怪！</div>
+    <div class="row">🔧 拖动左上角的圆球打开作弊面板（或按 <span class="key">G</span>）</div>
+  </div>
+</div>
+
+<div id="gameScreen">
+  <div class="info" id="infoText">手机：左手摇杆移动，右手点击发射｜电脑WASD移动，鼠标左键发射</div>
+  <div class="hud">血量：<span id="hpText">100</span></div>
+  <div class="hud2" id="smallCountHud" style="display:none;">小怪：<span id="smallCount">0</span></div>
+  <div class="hud3" id="weaponHud">武器：🔫 手枪</div>
+  <div class="hud4" id="debugHud" style="display:none;"></div>
+  <canvas id="minimap" class="minimap"></canvas>
+  <canvas id="gameCanvas"></canvas>
+  <button id="muteBtn">🔊</button>
+  <button id="homeBtn">🏠</button>
+
+  <button id="cheatBtn" title="修改器">🔧</button>
+
+  <div id="cheatPanel">
+    <h3>🔧 修改器</h3>
+
+    <div class="sectionTitle">基础作弊</div>
+    <div class="cheatRow">
+      <span>无敌模式</span>
+      <label class="switch">
+        <input type="checkbox" id="c_invincible">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>无限子弹</span>
+      <label class="switch">
+        <input type="checkbox" id="c_infiniteAmmo">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>秒杀模式</span>
+      <label class="switch">
+        <input type="checkbox" id="c_oneShot">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="cheatRow">
+      <span>常驻道具</span>
+      <label class="switch">
+        <input type="checkbox" id="c_allItems">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="subItems" id="allItemsSub">
+      <div class="subItem">
+        <span>❤️ 回血</span>
+        <label class="switch"><input type="checkbox" id="ci_heal"><span class="slider"></span></label>
+      </div>
+      <div class="subItem">
+        <span>⚡ 加速</span>
+        <label class="switch"><input type="checkbox" id="ci_speed"><span class="slider"></span></label>
+      </div>
+      <div class="subItem">
+        <span>🛡️ 护盾</span>
+        <label class="switch"><input type="checkbox" id="ci_shield"><span class="slider"></span></label>
+      </div>
+      <div class="subItem">
+        <span>💥 爆炸弹</span>
+        <label class="switch"><input type="checkbox" id="ci_explosive"><span class="slider"></span></label>
+      </div>
+      <div class="subItem">
+        <span>🔥 连射</span>
+        <label class="switch"><input type="checkbox" id="ci_rapid"><span class="slider"></span></label>
+      </div>
+      <div class="subItem">
+        <span>💣 炸弹</span>
+        <label class="switch"><input type="checkbox" id="ci_bomb"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="sectionTitle">玩法增强</div>
+    <div class="cheatRow">
+      <span>自动开火</span>
+      <label class="switch">
+        <input type="checkbox" id="c_autoFire">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>玩家隐身</span>
+      <label class="switch">
+        <input type="checkbox" id="c_invisible">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>无限护盾</span>
+      <label class="switch">
+        <input type="checkbox" id="c_infShield">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>反弹伤害</span>
+      <label class="switch">
+        <input type="checkbox" id="c_reflect">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>冻结所有怪</span>
+      <label class="switch">
+        <input type="checkbox" id="c_freeze">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>吸引所有怪</span>
+      <button id="c_attract">执行</button>
+    </div>
+
+    <div class="cheatRow">
+      <span>玩家大小 x<span id="c_playerSizeVal">1.0</span></span>
+      <div class="sliderGroup">
+        <input type="range" id="c_playerSize" min="0.5" max="5" step="0.1" value="1">
+        <input type="number" id="c_playerSizeNum" min="0.5" max="5" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="cheatRow">
+      <span>子弹速度 x<span id="c_bulletSpeedVal">1.0</span></span>
+      <div class="sliderGroup">
+        <input type="range" id="c_bulletSpeed" min="0.3" max="3" step="0.1" value="1">
+        <input type="number" id="c_bulletSpeedNum" min="0.3" max="3" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="cheatRow">
+      <span>游戏速度 x<span id="c_gameSpeedVal">1.0</span></span>
+      <div class="sliderGroup">
+        <input type="range" id="c_gameSpeed" min="0.3" max="3" step="0.1" value="1">
+        <input type="number" id="c_gameSpeedNum" min="0.3" max="3" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="cheatRow">
+      <span>怪物速度 x<span id="c_monsterSpeedVal">1.0</span></span>
+      <div class="sliderGroup">
+        <input type="range" id="c_monsterSpeed" min="0.3" max="3" step="0.1" value="1">
+        <input type="number" id="c_monsterSpeedNum" min="0.3" max="3" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="cheatRow">
+      <span>怪物血量 x<span id="c_monsterHpVal">1.0</span></span>
+      <div class="sliderGroup">
+        <input type="range" id="c_monsterHp" min="0.2" max="5" step="0.1" value="1">
+        <input type="number" id="c_monsterHpNum" min="0.2" max="5" step="0.1" value="1">
+      </div>
+    </div>
+
+    <div class="sectionTitle">武器切换（8 种）</div>
+    <div class="weaponGrid" id="weaponGrid"></div>
+
+    <div class="sectionTitle">敌人召唤器</div>
+    <div class="summonBox">
+      <select id="summonSelect">
+        <option value="small">小鼻屎怪</option>
+        <option value="elite">精英小怪（血厚、快）</option>
+        <option value="boss">大鼻屎怪（主怪）</option>
+        <option value="bossClone">大鼻屎怪（分身，可多只）</option>
+        <option value="bossPlus">大鼻屎怪 + 一群小怪</option>
+        <option value="bossArmy">大鼻屎怪分身军团（5 只）</option>
+      </select>
+      <button id="summonBtn">在玩家附近生成</button>
+    </div>
+
+    <div class="sectionTitle">传送</div>
+    <div class="cheatRow">
+      <span>随机传送</span>
+      <button id="c_tpRandom">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>传送到 Boss</span>
+      <button id="c_tpBoss">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>坐标 X</span>
+      <input type="number" id="c_tpX" value="2000" step="100">
+    </div>
+    <div class="cheatRow">
+      <span>坐标 Y</span>
+      <input type="number" id="c_tpY" value="2000" step="100">
+    </div>
+    <div class="cheatRow">
+      <span>传送到坐标</span>
+      <button id="c_tpXY">执行</button>
+    </div>
+
+    <div class="sectionTitle">清理 & 控制</div>
+    <div class="cheatRow">
+      <span>秒杀 Boss</span>
+      <button id="c_killBoss">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>清空小怪</span>
+      <button id="c_clearSmall">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>清空分身</span>
+      <button id="c_clearClones">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>清空子弹</span>
+      <button id="c_clearBullets">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>清空地雷</span>
+      <button id="c_clearMines">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>清空粒子</span>
+      <button id="c_clearParticles">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>跳到下一波</span>
+      <button id="c_nextWave">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>直接胜利</span>
+      <button id="c_win">执行</button>
+    </div>
+    <div class="cheatRow">
+      <span>满血</span>
+      <button id="c_fullHp">执行</button>
+    </div>
+
+    <div class="sectionTitle">全局</div>
+    <div class="cheatRow" style="justify-content:center;">
+      <button id="c_resetAll" style="background:#4a1a1a;border-color:#8a3a3a;color:#ffb0b0;font-weight:bold;min-width:150px;">🔄 重置全部作弊</button>
+    </div>
+
+    <div class="sectionTitle">视觉 / 调试</div>
+    <div class="cheatRow">
+      <span>显示 FPS</span>
+      <label class="switch">
+        <input type="checkbox" id="c_showFps">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>显示实体数量</span>
+      <label class="switch">
+        <input type="checkbox" id="c_showStats">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>显示碰撞体积</span>
+      <label class="switch">
+        <input type="checkbox" id="c_showHitbox">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>夜视模式</span>
+      <label class="switch">
+        <input type="checkbox" id="c_nightVision">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>彩虹模式</span>
+      <label class="switch">
+        <input type="checkbox" id="c_rainbow">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="cheatRow">
+      <span>无限连击</span>
+      <label class="switch">
+        <input type="checkbox" id="c_infCombo">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="cheatRow" style="justify-content:center;margin-top:10px;color:#8be26b;font-size:12px;">
+      拖动圆球移动 · 点击开关面板
+    </div>
+  </div>
+
+  <div class="joystickWrap">
+    <div class="joystickBase"></div>
+    <div class="joystickKnob"></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div id="overlayMsg"></div>
+  <div class="tip">点击任意处返回主页</div>
+</div>
+
+<audio id="bgmHome" loop preload="auto" style="display:none">
+  <source src="home.mp3" type="audio/mpeg">
+</audio>
+<audio id="bgmGame" loop preload="auto" style="display:none">
+  <source src="game.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="sfxShoot" preload="auto" style="display:none">
+  <source src="shoot.wav" type="audio/wav">
+</audio>
+<audio id="sfxHit" preload="auto" style="display:none">
+  <source src="current.mp3" type="audio/mpeg">
+</audio>
+<audio id="sfxExplosion" preload="auto" style="display:none">
+  <source src="explosion.wav" type="audio/wav">
+</audio>
+<audio id="sfxSmallExplosion" preload="auto" style="display:none">
+  <source src="small explosion.mp3" type="audio/mpeg">
+</audio>
+<audio id="sfxClick" preload="auto" style="display:none">
+  <source src="click.wav" type="audio/wav">
+</audio>
+
+<script>
+/* ==================================================
+   元素引用
+   ================================================== */
+const homeScreen  = document.getElementById('homeScreen');
+const gameScreen  = document.getElementById('gameScreen');
+const startBtn    = document.getElementById('startBtn');
+const homeBtn     = document.getElementById('homeBtn');
+const helpBox     = document.getElementById('helpBox');
+const overlay     = document.getElementById('overlay');
+const overlayMsg  = document.getElementById('overlayMsg');
+const smallCountHud = document.getElementById('smallCountHud');
+const smallCountEl  = document.getElementById('smallCount');
+const weaponHud   = document.getElementById('weaponHud');
+const debugHud    = document.getElementById('debugHud');
+
+const canvas      = document.getElementById('gameCanvas');
+const ctx         = canvas.getContext('2d');
+const miniCanvas  = document.getElementById('minimap');
+const miniCtx     = miniCanvas.getContext('2d');
+const hpText      = document.getElementById('hpText');
+const muteBtn     = document.getElementById('muteBtn');
+
+const bgmHome = document.getElementById('bgmHome');
+const bgmGame = document.getElementById('bgmGame');
+
+const cheatBtn   = document.getElementById('cheatBtn');
+const cheatPanel = document.getElementById('cheatPanel');
+
+const MAP_WIDTH = 4000;
+const MAP_HEIGHT = 4000;
+const MAX_BULLETS = 400;
+const MAX_PARTICLES = 500;
+
+const SMALL_MONSTER_RADIUS = 24;
+const SMALL_MONSTER_HP = 60;
+const SMALL_MONSTER_SPEED = 2.2;
+const SMALL_SHOOT_INTERVAL = 180;
+const SMALL_BULLET_SPEED = 3.2;
+const SMALL_BULLET_RADIUS = 7;
+const SMALL_BULLET_DAMAGE = 8;
+
+const DEATH_ANIM_FRAMES = 60;
+const SPAWN_ANIM_FRAMES = 60;
+
+const BOMB_RADIUS = 110;
+const BOMB_DAMAGE = 55;
+const BOMB_DURATION = 300;
+const BOMB_BULLET_RADIUS = 11;
+
+const SUMMON_PER_WAVE = 3;
+const DEATH_WAVES = 3;
+const DEATH_WAVE_DELAY = 40;
+
+const BOSS_CLONE_HP = 200;
+const BOSS_CLONE_RADIUS = 50;
+const BOSS_CLONE_SPEED = 1.6;
+const BOSS_CLONE_SKILL_CD = 300;
+
+/* ★ 快速距离函数 */
+function dist2(x1, y1, x2, y2){
+  const dx = x2 - x1, dy = y2 - y1;
+  return dx * dx + dy * dy;
+}
+
+/* ==================================================
+   武器数据
+   ================================================== */
+const WEAPONS = {
+  pistol:      { name: "🔫 手枪",     cd: 180, damage: 25, bulletRadius: 8,  color: "#ffdd00", speed: 7 },
+  shotgun:     { name: "💥 霰弹",     cd: 400, damage: 18, bulletRadius: 7,  color: "#ff8844", speed: 6,  spread: 5, spreadAngle: 0.18 },
+  laser:       { name: "🚀 激光",     cd: 60,  damage: 15, bulletRadius: 5,  color: "#44ddff", speed: 12, pierce: true },
+  smg:         { name: "⚡ 冲锋",     cd: 40,  damage: 10, bulletRadius: 6,  color: "#dd66ff", speed: 8 },
+  sniper:      { name: "🎯 狙击",     cd: 500, damage: 80, bulletRadius: 6,  color: "#ff2266", speed: 18, pierce: true },
+  tripleSnipe: { name: "🎯🎯🎯 三重狙击", cd: 600, damage: 60, bulletRadius: 6, color: "#ff44aa", speed: 20, pierce: true, tripleSnipe: true },
+  triple:      { name: "🌟 三向",     cd: 250, damage: 15, bulletRadius: 7,  color: "#ff88ff", speed: 8,  triple: true },
+  grenade:     { name: "💣 榴弹",     cd: 350, damage: 35, bulletRadius: 10, color: "#aaff44", speed: 7,  grenade: true }
+};
+const WEAPON_DURATION = 600;
+const WEAPON_KEYS = ["pistol","shotgun","laser","smg","sniper","tripleSnipe","triple","grenade"];
+
+let shakeTime = 0;
+let shakePower = 0;
+let shakeX = 0;
+let shakeY = 0;
+
+/* ==================================================
+   作弊状态
+   ================================================== */
+const cheats = {
+  invincible: false,
+  infiniteAmmo: false,
+  oneShot: false,
+  allItems: false,
+  speedMul: 1.0,
+  itemFlags: {
+    heal: false,
+    speed: false,
+    shield: false,
+    explosive: false,
+    rapid: false,
+    bomb: false
+  },
+  autoFire: false,
+  invisible: false,
+  infShield: false,
+  reflect: false,
+  freeze: false,
+  playerSize: 1.0,
+  bulletSpeed: 1.0,
+  gameSpeed: 1.0,
+  monsterSpeed: 1.0,
+  monsterHp: 1.0,
+  showFps: false,
+  showStats: false,
+  showHitbox: false,
+  nightVision: false,
+  rainbow: false,
+  infCombo: false
+};
+
+/* ★ 连击系统 */
+let combo = 0;
+let comboTimer = 0;
+let comboTimerId = null;
+
+/* ★ FPS 统计 */
+let fpsFrames = 0;
+let fpsLastTime = performance.now();
+let fpsCurrent = 60;
+
+/* ==================================================
+   设备判断
+   ================================================== */
+const isMobile = (function(){
+  const ua = navigator.userAgent;
+  const uaMobile = /Android|iPhone|iPad|iPod|Mobile|HarmonyOS|Windows Phone/i.test(ua);
+  const touchOnly = ('ontouchstart' in window) && !window.matchMedia('(pointer: fine)').matches;
+  return uaMobile || touchOnly;
+})();
+
+const joystickWrap = document.querySelector('.joystickWrap');
+const joystickKnob = document.querySelector('.joystickKnob');
+
+if (isMobile) {
+  helpBox.innerHTML = `
+    <div class="row">📱 <b>移动端</b>：左手摇杆移动，右手点击屏幕发射子弹</div>
+    <div class="row">🔫 <b>8 种武器</b>：手枪 / 霰弹 / 激光 / 冲锋 / 狙击 / 三重狙击 / 三向 / 榴弹</div>
+    <div class="row">🛡️ 拾取道具获得：回血 / 加速 / 护盾 / 爆炸弹 / 连射 / 炸弹</div>
+    <div class="row">💀 目标：先击败大鼻屎怪，再清理小鼻屎怪！</div>
+    <div class="row">🔧 拖动左上角的圆球打开作弊面板</div>
+  `;
+}
+
+/* ==================================================
+   音频
+   ================================================== */
+let bgmMuted = false;
+let currentBgm = null;
+let bgmSwitchLock = false;
+const bgmList = { home: bgmHome, game: bgmGame };
+bgmHome.volume = 0.5;
+bgmGame.volume = 0.5;
+
+const sfxList = {
+  shoot: document.getElementById('sfxShoot'),
+  hit: document.getElementById('sfxHit'),
+  explosion: document.getElementById('sfxExplosion'),
+  smallExplosion: document.getElementById('sfxSmallExplosion'),
+  click: document.getElementById('sfxClick')
+};
+const sfxCooldown = {};
+
+function playSfx(name, cd = 0){
+  if(bgmMuted) return;
+  const a = sfxList[name];
+  if(!a) return;
+  const now = performance.now();
+  if(sfxCooldown[name] && now - sfxCooldown[name] < cd) return;
+  sfxCooldown[name] = now;
+  try {
+    a.currentTime = 0;
+    a.play().catch(()=>{});
+  } catch(e){}
+}
+
+function pauseAllBgm(){
+  for(const key in bgmList){
+    const a = bgmList[key];
+    try { if(!a.paused) a.pause(); } catch(e){}
+  }
+}
+function resetAudio(a){
+  try { a.pause(); a.currentTime = 0; } catch(e){}
+}
+function switchBgm(which){
+  if(bgmSwitchLock) return;
+  if(currentBgm === which) return;
+  bgmSwitchLock = true;
+  pauseAllBgm();
+  for(const key in bgmList){
+    if(key !== which) resetAudio(bgmList[key]);
+  }
+  const target = bgmList[which];
+  if(!target){ bgmSwitchLock = false; return; }
+  target.muted = bgmMuted;
+  const p = target.play();
+  if(p && p.then){
+    p.then(()=>{
+      currentBgm = which;
+      bgmSwitchLock = false;
+    }).catch(err=>{
+      console.warn('[BGM] 播放失败：', err);
+      bgmSwitchLock = false;
+    });
+  }else{
+    currentBgm = which;
+    bgmSwitchLock = false;
+  }
+}
+
+setInterval(()=>{
+  if(!currentBgm) return;
+  for(const key in bgmList){
+    const a = bgmList[key];
+    if(key !== currentBgm && !a.paused) resetAudio(a);
+  }
+}, 1500);
+
+let musicReady = false;
+let musicLoadFailed = false;
+
+const musicTimeout = setTimeout(()=>{
+  if(!musicReady){
+    musicReady = true;
+    musicLoadFailed = true;
+    enableStartBtn();
+  }
+}, 8000);
+
+function enableStartBtn(){
+  startBtn.disabled = false;
+  startBtn.textContent = musicLoadFailed ? '开始游戏（音乐可能不可用）' : '开始游戏';
+}
+
+function checkAllBgmReady(){
+  const homeReady = bgmHome.readyState >= 3;
+  const gameReady = bgmGame.readyState >= 3;
+  if(homeReady && gameReady && !musicReady){
+    musicReady = true;
+    clearTimeout(musicTimeout);
+    enableStartBtn();
+  }
+}
+
+[bgmHome, bgmGame].forEach((a)=>{
+  a.addEventListener('canplaythrough', checkAllBgmReady);
+  a.addEventListener('loadeddata', checkAllBgmReady);
+  a.addEventListener('error', ()=>{
+    musicLoadFailed = true;
+    clearTimeout(musicTimeout);
+    musicReady = true;
+    enableStartBtn();
+  });
+});
+
+try { bgmHome.load(); } catch(e){}
+try { bgmGame.load(); } catch(e){}
+
+/* ★ 音效解锁 */
+function unlockSfx(){
+  for(const k in sfxList){
+    const a = sfxList[k];
+    if(!a) continue;
+    const oldVol = a.volume;
+    a.volume = 0;
+    const p = a.play();
+    if(p && p.then){
+      p.then(()=>{
+        a.pause();
+        a.currentTime = 0;
+        a.volume = oldVol;
+      }).catch(()=>{ a.volume = oldVol; });
+    }else{
+      a.volume = oldVol;
+    }
+  }
+}
+
+let firstInteractDone = false;
+function firstInteract(){
+  if(firstInteractDone) return;
+  firstInteractDone = true;
+  unlockSfx();
+  switchBgm('home');
+}
+window.addEventListener('pointerdown', firstInteract, { once: true });
+window.addEventListener('keydown',     firstInteract, { once: true });
+window.addEventListener('touchstart',  firstInteract, { once: true, passive: true });
+
+muteBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  bgmMuted = !bgmMuted;
+  bgmHome.muted = bgmMuted;
+  bgmGame.muted = bgmMuted;
+  muteBtn.textContent = bgmMuted ? '🔇' : '🔊';
+});
+
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){
+    pauseAllBgm();
+  }else{
+    if(currentBgm){
+      const a = bgmList[currentBgm];
+      if(a && a.paused) a.play().catch(()=>{});
+    }
+  }
+});
+
+/* ==================================================
+   游戏状态
+   ================================================== */
+let gameRunning = false;
+let gameEnded = false;
+
+const player = {
+  x: 100, y: 100, radius: 16,
+  baseSpeed: 4, speed: 4,
+  hp: 100, maxHp: 100,
+  speedBuffTimer: 0,
+  slowDebuffTimer: 0,
+  shootCooldown: 0,
+  hurtTimer: 0, invincibleTimer: 0,
+  shieldTimer: 0, explosiveTimer: 0, rapidTimer: 0,
+  bombTimer: 0,
+  weapon: "pistol",
+  weaponTimer: 0
+};
+
+function recalcPlayerSpeed(){
+  let mul = cheats.speedMul;
+  if(player.speedBuffTimer > 0) mul *= 1.6;
+  if(player.slowDebuffTimer > 0) mul *= 0.5;
+  player.speed = player.baseSpeed * mul;
+}
+
+const boogerMonster = {
+  x: 2000, y: 2000, radius: 70, speed: 1.8,
+  skillCooldown: 380, skillTimer: 380,
+  activeSkill: "none",
+  fireCount: 0, fireDelay: 15, fireTimer: 0,
+  mineSpawnCount: 0, mineSpawnDelay: 20, mineSpawnTimer: 0,
+  scatterRound: 0, scatterDelay: 25, scatterTimer: 0,
+  summonWaveIndex: 0,
+  summonWaveTimer: 0,
+  stunTimer: 0, hp: 500, maxHp: 500,
+  dead: false,
+  deathAnimTimer: 0,
+  deathAnimTotal: DEATH_ANIM_FRAMES,
+  deathWaveIndex: 0,
+  deathWaveTimer: 0
+};
+
+let bossClones = [];
+let boogerBullets = [];
+let boogerMines = [];
+let playerBullets = [];
+let particles = [];
+let damageTexts = [];
+let items = [];
+let smallMonsters = [];
+let smallBullets = [];
+let bombBlasts = [];
+
+const camera = { x: 0, y: 0 };
+const keys = { w:false, a:false, s:false, d:false };
+const joystick = { active:false, touchId:-1, startX:0, startY:0, dx:0, dy:0, maxDist:45 };
+
+function swapRemove(arr, i){
+  arr[i] = arr[arr.length - 1];
+  arr.pop();
+}
+
+function addCombo(){
+  combo++;
+  comboTimer = 90;
+  if(comboTimerId) clearTimeout(comboTimerId);
+  comboTimerId = setTimeout(()=>{ combo = 0; }, 2000);
+}
+
+function spawnBossClone(x, y){
+  bossClones.push({
+    x: x, y: y,
+    radius: BOSS_CLONE_RADIUS,
+    hp: BOSS_CLONE_HP * cheats.monsterHp,
+    maxHp: BOSS_CLONE_HP * cheats.monsterHp,
+    speed: BOSS_CLONE_SPEED * cheats.monsterSpeed,
+    skillTimer: BOSS_CLONE_SKILL_CD,
+    activeSkill: "none",
+    fireCount: 0, fireDelay: 18, fireTimer: 0,
+    scatterRound: 0, scatterDelay: 30, scatterTimer: 0,
+    stunTimer: 0, hurtTimer: 0
+  });
+  triggerShake(12, 20);
+}
+
+function spawnSmallMonsterAt(x, y, opts = {}){
+  const isElite = !!opts.elite;
+  const radius = isElite ? SMALL_MONSTER_RADIUS * 1.3 : SMALL_MONSTER_RADIUS;
+  const hp = (isElite ? SMALL_MONSTER_HP * 4 : SMALL_MONSTER_HP) * cheats.monsterHp;
+  const speed = (isElite ? SMALL_MONSTER_SPEED * 1.5 : SMALL_MONSTER_SPEED) * cheats.monsterSpeed;
+
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 80 + Math.random() * 120;
+  const startX = x - Math.cos(angle) * dist;
+  const startY = y - Math.sin(angle) * dist;
+
+  smallMonsters.push({
+    x: startX, y: startY,
+    radius: radius,
+    hp: hp, maxHp: hp,
+    speed: speed,
+    shootTimer: Math.floor(Math.random() * SMALL_SHOOT_INTERVAL),
+    hurtTimer: 0,
+    isElite: isElite,
+    spawnAnimTimer: SPAWN_ANIM_FRAMES,
+    spawnAnimTotal: SPAWN_ANIM_FRAMES,
+    spawnStartX: startX, spawnStartY: startY,
+    spawnTargetX: x, spawnTargetY: y,
+    spawnAngle: angle,
+    spawnCurve: (Math.random() - 0.5) * 2
+  });
+  smallCountHud.style.display = 'block';
+}
+
+function spawnBossAt(x, y){
+  boogerMonster.x = x;
+  boogerMonster.y = y;
+  if(boogerMonster.dead){
+    boogerMonster.hp = boogerMonster.maxHp;
+    boogerMonster.dead = false;
+    boogerMonster.deathAnimTimer = 0;
+    boogerMonster.deathWaveIndex = 0;
+    boogerMonster.deathWaveTimer = 0;
+    boogerMonster.skillTimer = boogerMonster.skillCooldown;
+    boogerMonster.activeSkill = "none";
+    boogerMonster.fireCount = 0;
+    boogerMonster.mineSpawnCount = 0;
+    boogerMonster.scatterRound = 0;
+    boogerMonster.stunTimer = 0;
+    smallCountHud.style.display = 'none';
+  }
+  triggerShake(15, 25);
+}
+
+function resizeCanvas(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - 32;
+  miniCanvas.width = 160;
+  miniCanvas.height = 160;
+}
+window.addEventListener('resize', resizeCanvas);
+
+document.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if(keys.hasOwnProperty(k)) keys[k] = true;
+  if(k === 'g'){
+    if(cheatPanel.style.display === 'block'){
+      cheatPanel.style.display = 'none';
+    }else{
+      const r = cheatBtn.getBoundingClientRect();
+      cheatPanel.style.left = Math.min(r.left, window.innerWidth - 360) + 'px';
+      cheatPanel.style.top = (r.top + 64) + 'px';
+      cheatPanel.style.display = 'block';
+    }
+  }
+});
+document.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if(keys.hasOwnProperty(k)) keys[k] = false;
+});
+
+/* ★ 移动端动态摇杆 */
+if (isMobile) {
+  document.addEventListener('touchstart', (e)=>{
+    if(!gameRunning || gameEnded) return;
+    for(let i = 0; i < e.changedTouches.length; i++){
+      const t = e.changedTouches[i];
+      if(joystick.active) continue;
+      if(t.clientX < window.innerWidth * 0.5){
+        joystick.active = true;
+        joystick.touchId = t.identifier;
+        joystick.startX = t.clientX;
+        joystick.startY = t.clientY;
+        joystick.dx = 0;
+        joystick.dy = 0;
+        joystickWrap.style.left = (t.clientX - 70) + 'px';
+        joystickWrap.style.top  = (t.clientY - 70) + 'px';
+        joystickWrap.style.bottom = 'auto';
+        joystickWrap.style.display = 'block';
+        joystickKnob.style.transform = 'translate(-50%,-50%)';
+      }
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if(!joystick.active) return;
+    e.preventDefault();
+    for(let i = 0; i < e.touches.length; i++){
+      const touch = e.touches[i];
+      if(touch.identifier === joystick.touchId){
+        joystick.dx = touch.clientX - joystick.startX;
+        joystick.dy = touch.clientY - joystick.startY;
+        const dist = Math.sqrt(joystick.dx * joystick.dx + joystick.dy * joystick.dy);
+        if(dist > joystick.maxDist){
+          joystick.dx = (joystick.dx / dist) * joystick.maxDist;
+          joystick.dy = (joystick.dy / dist) * joystick.maxDist;
+        }
+        joystickKnob.style.transform =
+          `translate(calc(-50% + ${joystick.dx}px), calc(-50% + ${joystick.dy}px))`;
+      }
+    }
+  }, { passive: false });
+
+  function endJoystick(e){
+    for(let i = 0; i < e.changedTouches.length; i++){
+      const touch = e.changedTouches[i];
+      if(touch.identifier === joystick.touchId){
+        joystick.active = false;
+        joystick.touchId = -1;
+        joystick.dx = 0; joystick.dy = 0;
+        joystickKnob.style.transform = 'translate(-50%,-50%)';
+        joystickWrap.style.display = 'none';
+        joystickWrap.style.left = '20px';
+        joystickWrap.style.top = 'auto';
+        joystickWrap.style.bottom = '20px';
+      }
+    }
+  }
+  document.addEventListener('touchend', endJoystick);
+  document.addEventListener('touchcancel', endJoystick);
+}
+
+/* ★ 开火（连射冷却减半） */
+function fireWeapon(targetWorldX, targetWorldY){
+  const w = WEAPONS[player.weapon];
+  if(!w) return;
+  const baseDx = targetWorldX - player.x;
+  const baseDy = targetWorldY - player.y;
+  const baseDist2 = baseDx * baseDx + baseDy * baseDy;
+  if(baseDist2 <= 0) return;
+  const baseAngle = Math.atan2(baseDy, baseDx);
+
+  const isBomb = player.bombTimer > 0;
+  const isExplosive = !isBomb && player.explosiveTimer > 0;
+  const speedMul = cheats.bulletSpeed;
+
+  function pushBullet(angle, speed, radius, damage, opts = {}){
+    playerBullets.push({
+      x: player.x, y: player.y,
+      vx: Math.cos(angle) * speed * speedMul,
+      vy: Math.sin(angle) * speed * speedMul,
+      radius: isBomb ? BOMB_BULLET_RADIUS : (isExplosive ? 12 : radius),
+      life: opts.life || 600,
+      explosive: isExplosive,
+      bomb: isBomb,
+      pierce: opts.pierce || false,
+      hitSet: opts.pierce ? new Set() : null,
+      damage: damage,
+      color: w.color,
+      grenade: opts.grenade || false,
+      startX: player.x,
+      startY: player.y,
+      angle0: angle
+    });
+  }
+
+  if(player.weapon === "shotgun" && w.spread){
+    for(let i = 0; i < w.spread; i++){
+      const offset = (i - (w.spread-1)/2) * w.spreadAngle;
+      pushBullet(baseAngle + offset, w.speed, w.bulletRadius, w.damage);
+    }
+  }
+  else if(w.triple){
+    for(let i = -1; i <= 1; i++){
+      const offset = i * 0.15;
+      pushBullet(baseAngle + offset, w.speed, w.bulletRadius, w.damage);
+    }
+  }
+  else if(w.tripleSnipe){
+    for(let i = -1; i <= 1; i++){
+      const offset = i * 0.08;
+      pushBullet(baseAngle + offset, w.speed, w.bulletRadius, w.damage, {pierce: true});
+    }
+  }
+  else{
+    pushBullet(baseAngle, w.speed, w.bulletRadius, w.damage, {
+      pierce: w.pierce,
+      grenade: w.grenade
+    });
+  }
+
+  playSfx('shoot', 30);
+
+  if(!cheats.infiniteAmmo){
+    let cd = w.cd;
+    if(player.rapidTimer > 0) cd = Math.max(6, Math.floor(w.cd / 2));
+    player.shootCooldown = cd;
+  }else{
+    player.shootCooldown = 2;
+  }
+}
+
+const AUTO_FIRE_RANGE2 = 600 * 600;
+function findNearestEnemy(){
+  let best = null;
+  let bestDist2 = AUTO_FIRE_RANGE2;
+  const candidates = [];
+
+  if(!boogerMonster.dead) candidates.push(boogerMonster);
+  for(const bc of bossClones) candidates.push(bc);
+  for(const sm of smallMonsters){
+    if(sm.spawnAnimTimer > 0) continue;
+    candidates.push(sm);
+  }
+
+  for(const c of candidates){
+    const d2 = dist2(c.x, c.y, player.x, player.y);
+    if(d2 < bestDist2){ bestDist2 = d2; best = c; }
+  }
+  return best;
+}
+
+canvas.addEventListener('mousedown', (e)=>{
+  if(!gameRunning || gameEnded) return;
+  if(!cheats.infiniteAmmo && player.shootCooldown>0) return;
+  fireWeapon(e.clientX + camera.x, e.clientY + camera.y);
+});
+
+canvas.addEventListener('touchstart', (e)=>{
+  if(!isMobile || !gameRunning || gameEnded) return;
+  for(let i=0;i<e.changedTouches.length;i++){
+    const touch = e.changedTouches[i];
+    if(touch.identifier === joystick.touchId) continue;
+    if(touch.clientX < window.innerWidth * 0.5) continue;
+    if(!cheats.infiniteAmmo && player.shootCooldown>0) continue;
+    fireWeapon(touch.clientX + camera.x, touch.clientY + camera.y);
+  }
+});
+
+function spawnExplosion(x,y){
+  for(let i = 0; i < 24; i++){
+    if(particles.length >= MAX_PARTICLES) break;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 3;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius: 2 + Math.random() * 4,
+      life: 40, color: '#603813'
+    });
+  }
+}
+function spawnHitParticle(x,y){
+  for(let i=0;i<12;i++){
+    if(particles.length >= MAX_PARTICLES) break;
+    const angle = Math.random() * Math.PI *2;
+    const speed = 1.5 + Math.random()*2;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle)*speed,
+      vy: Math.sin(angle)*speed,
+      radius: 3, life: 25, color: '#ffdd00'
+    });
+  }
+}
+function spawnDamageText(x,y,value,isPlayerDamage){
+  damageTexts.push({
+    x, y,
+    text: (isPlayerDamage ? "-" : "") + value,
+    life: 70, vy: -1.2, isPlayerDamage
+  });
+}
+
+function applyDamageMultiplier(dmg){
+  return cheats.oneShot ? dmg * 1000 : dmg;
+}
+
+function killBossNow(){
+  if(boogerMonster.dead) return;
+  boogerMonster.hp = 0;
+  boogerMonster.dead = true;
+  boogerMonster.deathAnimTimer = DEATH_ANIM_FRAMES;
+  boogerMonster.deathAnimTotal = DEATH_ANIM_FRAMES;
+  boogerMonster.deathWaveIndex = 0;
+  boogerMonster.deathWaveTimer = 0;
+  triggerShake(20, 45);
+  playSfx('smallExplosion', 80);
+  for(let k = 0; k < 4; k++){
+    spawnExplosion(
+      boogerMonster.x + (Math.random() - 0.5) * 60,
+      boogerMonster.y + (Math.random() - 0.5) * 60
+    );
+  }
+  spawnDamageText(player.x, player.y - 60, "⚠️小怪来了!", false);
+  smallCountHud.style.display = 'block';
+  addCombo();
+}
+
+function spawnBombBlast(x, y){
+  bombBlasts.push({ x, y, radius: 10, maxRadius: BOMB_RADIUS, life: 24, maxLife: 24 });
+  playSfx('explosion', 80);
+
+  if(!boogerMonster.dead){
+    const d2 = dist2(x, y, boogerMonster.x, boogerMonster.y);
+    const rr = BOMB_RADIUS + boogerMonster.radius;
+    if(d2 < rr * rr){
+      const dmg = applyDamageMultiplier(BOMB_DAMAGE);
+      boogerMonster.hp -= dmg;
+      boogerMonster.stunTimer = 90;
+      spawnDamageText(boogerMonster.x, boogerMonster.y - 80, dmg, false);
+      if(boogerMonster.hp <= 0) killBossNow();
+    }
+  }
+  for(let i = bossClones.length - 1; i >= 0; i--){
+    const bc = bossClones[i];
+    const d2 = dist2(x, y, bc.x, bc.y);
+    const rr = BOMB_RADIUS + bc.radius;
+    if(d2 < rr * rr){
+      const dmg = applyDamageMultiplier(BOMB_DAMAGE);
+      bc.hp -= dmg; bc.stunTimer = 60; bc.hurtTimer = 8;
+      spawnDamageText(bc.x, bc.y - 60, dmg, false);
+      if(bc.hp <= 0){
+        spawnExplosion(bc.x, bc.y);
+        playSfx('smallExplosion', 60);
+        swapRemove(bossClones, i);
+        addCombo();
+      }
+    }
+  }
+  for(let j = smallMonsters.length - 1; j >= 0; j--){
+    const sm = smallMonsters[j];
+    if(sm.spawnAnimTimer > 0) continue;
+    const d2 = dist2(x, y, sm.x, sm.y);
+    const rr = BOMB_RADIUS + sm.radius;
+    if(d2 < rr * rr){
+      const dmg = applyDamageMultiplier(BOMB_DAMAGE);
+      sm.hp -= dmg; sm.hurtTimer = 8;
+      spawnDamageText(sm.x, sm.y - 30, dmg, false);
+      if(sm.hp <= 0){
+        spawnExplosion(sm.x, sm.y);
+        triggerShakeAt(sm.x, sm.y, 6, 12);
+        playSfx('smallExplosion', 60);
+        swapRemove(smallMonsters, j);
+        addCombo();
+      }
+    }
+  }
+
+  for(let i = 0; i < 36; i++){
+    if(particles.length >= MAX_PARTICLES) break;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 5;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius: 3 + Math.random() * 5,
+      life: 40, color: '#ff5522'
+    });
+  }
+  triggerShakeAt(x, y, 14, 22);
+}
+
+function triggerShake(power, duration){
+  shakePower = Math.max(shakePower, power);
+  shakeTime  = Math.max(shakeTime, duration);
+}
+function triggerShakeAt(worldX, worldY, power, duration){
+  const cx = camera.x + canvas.width / 2;
+  const cy = camera.y + canvas.height / 2;
+  const dist = Math.sqrt(dist2(worldX, worldY, cx, cy));
+  const maxDist = Math.max(canvas.width, canvas.height) * 0.8;
+  if(dist > maxDist) return;
+  const factor = 1 - dist / maxDist;
+  triggerShake(power * factor, duration);
+}
+
+function spawnItem(){
+  const rand = Math.random();
+  let type;
+  if(rand < 0.14) type = "heal";
+  else if(rand < 0.24) type = "speed";
+  else if(rand < 0.32) type = "shield";
+  else if(rand < 0.40) type = "explosive";
+  else if(rand < 0.48) type = "rapid";
+  else if(rand < 0.55) type = "bomb";
+  else {
+    const weapons = ["weapon_shotgun","weapon_laser","weapon_smg","weapon_sniper","weapon_tripleSnipe","weapon_triple","weapon_grenade"];
+    type = weapons[Math.floor(Math.random() * weapons.length)];
+  }
+  items.push({
+    x: Math.random() * MAP_WIDTH,
+    y: Math.random() * MAP_HEIGHT,
+    radius: 14, type,
+    pulseTimer: Math.random()*100
+  });
+}
+
+const WEAPON_ITEM_MAP = {
+  weapon_shotgun: "shotgun", weapon_laser: "laser", weapon_smg: "smg",
+  weapon_sniper: "sniper", weapon_tripleSnipe: "tripleSnipe",
+  weapon_triple: "triple", weapon_grenade: "grenade"
+};
+const WEAPON_ITEM_ICON = {
+  weapon_shotgun: "💥", weapon_laser: "🚀", weapon_smg: "⚡",
+  weapon_sniper: "🎯", weapon_tripleSnipe: "🎯",
+  weapon_triple: "🌟", weapon_grenade: "💣"
+};
+const WEAPON_ITEM_COLOR = {
+  weapon_shotgun: "#ff8844", weapon_laser: "#44ddff", weapon_smg: "#dd66ff",
+  weapon_sniper: "#ff2266", weapon_tripleSnipe: "#ff44aa",
+  weapon_triple: "#ff88ff", weapon_grenade: "#aaff44"
+};
+
+function spawnSmallMonstersFromBoss(count){
+  for(let i = 0; i < count; i++){
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+    const dist = 120 + Math.random() * 120;
+    const startX = boogerMonster.x;
+    const startY = boogerMonster.y;
+    const targetX = startX + Math.cos(angle) * dist;
+    const targetY = startY + Math.sin(angle) * dist;
+
+    smallMonsters.push({
+      x: startX, y: startY,
+      radius: SMALL_MONSTER_RADIUS,
+      hp: SMALL_MONSTER_HP * cheats.monsterHp,
+      maxHp: SMALL_MONSTER_HP * cheats.monsterHp,
+      speed: SMALL_MONSTER_SPEED * cheats.monsterSpeed,
+      shootTimer: Math.floor(Math.random() * SMALL_SHOOT_INTERVAL),
+      hurtTimer: 0,
+      spawnAnimTimer: SPAWN_ANIM_FRAMES,
+      spawnAnimTotal: SPAWN_ANIM_FRAMES,
+      spawnStartX: startX, spawnStartY: startY,
+      spawnTargetX: targetX, spawnTargetY: targetY,
+      spawnAngle: angle,
+      spawnCurve: (Math.random() - 0.5) * 2
+    });
+  }
+  triggerShake(10, 18);
+  spawnDamageText(boogerMonster.x, boogerMonster.y - 90, "召唤!", false);
+}
+
+function resetGame(){
+  player.x = 100; player.y = 100;
+  player.hp = player.maxHp;
+  player.speed = player.baseSpeed;
+  player.speedBuffTimer = 0;
+  player.slowDebuffTimer = 0;
+  player.shootCooldown = 0;
+  player.hurtTimer = 0; player.invincibleTimer = 0;
+  player.shieldTimer = 0; player.explosiveTimer = 0; player.rapidTimer = 0;
+  player.bombTimer = 0;
+  player.weapon = "pistol";
+  player.weaponTimer = 0;
+  updateWeaponHud();
+
+  boogerMonster.x = 2000; boogerMonster.y = 2000;
+  boogerMonster.skillTimer = boogerMonster.skillCooldown;
+  boogerMonster.activeSkill = "none";
+  boogerMonster.fireCount = 0;
+  boogerMonster.mineSpawnCount = 0;
+  boogerMonster.scatterRound = 0;
+  boogerMonster.summonWaveIndex = 0;
+  boogerMonster.summonWaveTimer = 0;
+  boogerMonster.stunTimer = 0;
+  boogerMonster.hp = boogerMonster.maxHp;
+  boogerMonster.dead = false;
+  boogerMonster.deathAnimTimer = 0;
+  boogerMonster.deathWaveIndex = 0;
+  boogerMonster.deathWaveTimer = 0;
+
+  bossClones = [];
+  boogerBullets = [];
+  boogerMines = [];
+  playerBullets = [];
+  particles = [];
+  damageTexts = [];
+  items = [];
+  smallMonsters = [];
+  smallBullets = [];
+  bombBlasts = [];
+
+  combo = 0; comboTimer = 0;
+  if(comboTimerId){ clearTimeout(comboTimerId); comboTimerId = null; }
+
+  for(let i=0;i<8;i++) spawnItem();
+  hpText.textContent = player.hp;
+  smallCountHud.style.display = 'none';
+
+  keys.w = keys.a = keys.s = keys.d = false;
+  joystick.active = false;
+  joystick.touchId = -1;
+  joystick.dx = 0; joystick.dy = 0;
+  joystickKnob.style.transform = 'translate(-50%,-50%)';
+  if(isMobile){
+    joystickWrap.style.display = 'none';
+    joystickWrap.style.left = '20px';
+    joystickWrap.style.top = 'auto';
+    joystickWrap.style.bottom = '20px';
+  }
+
+  shakeTime = 0;
+  shakePower = 0;
+  shakeX = 0;
+  shakeY = 0;
+
+  bgmSwitchLock = false;
+  gameEnded = false;
+}
+
+function updateWeaponHud(){
+  const w = WEAPONS[player.weapon];
+  if(!w) return;
+  let suffix = "";
+  if(player.weaponTimer > 0) suffix = ` (${Math.ceil(player.weaponTimer/60)}s)`;
+  weaponHud.textContent = `武器：${w.name}${suffix}`;
+}
+
+function switchWeapon(key, temporary = false){
+  if(!WEAPONS[key]) return;
+  player.weapon = key;
+  player.weaponTimer = temporary ? WEAPON_DURATION : 0;
+  updateWeaponHud();
+  WEAPON_KEYS.forEach(k=>{
+    const btn = document.getElementById('w_' + k);
+    if(btn) btn.classList.toggle('active', k === key);
+  });
+}
+
+function endGame(message){
+  if(gameEnded) return;
+  gameEnded = true;
+  gameRunning = false;
+
+  overlayMsg.textContent = message;
+  overlay.style.display = 'flex';
+
+  const goHome = ()=>{
+    overlay.removeEventListener('click', goHome);
+    overlay.style.display = 'none';
+    gameScreen.style.display = 'none';
+    homeScreen.style.display = 'flex';
+    switchBgm('home');
+    resetGame();
+  };
+  overlay.addEventListener('click', goHome);
+
+  setTimeout(()=>{
+    if(overlay.style.display !== 'none') goHome();
+  }, 3000);
+}
+
+function drawMinimap(){
+  miniCtx.fillStyle = '#222';
+  miniCtx.fillRect(0, 0, 160, 160);
+  const mapScale = 160 / MAP_WIDTH;
+
+  miniCtx.strokeStyle = 'rgba(255,255,255,0.35)';
+  miniCtx.lineWidth = 1;
+  miniCtx.strokeRect(
+    camera.x * mapScale,
+    camera.y * mapScale,
+    canvas.width * mapScale,
+    canvas.height * mapScale
+  );
+
+  miniCtx.fillStyle = '#348ede';
+  miniCtx.beginPath();
+  miniCtx.arc(player.x * mapScale, player.y * mapScale, 3, 0, Math.PI * 2);
+  miniCtx.fill();
+
+  if(!boogerMonster.dead){
+    miniCtx.fillStyle = '#704214';
+    miniCtx.beginPath();
+    miniCtx.arc(boogerMonster.x * mapScale, boogerMonster.y * mapScale, 5, 0, Math.PI * 2);
+    miniCtx.fill();
+  }
+
+  miniCtx.fillStyle = '#ff5522';
+  for(const bc of bossClones){
+    miniCtx.beginPath();
+    miniCtx.arc(bc.x * mapScale, bc.y * mapScale, 4, 0, Math.PI * 2);
+    miniCtx.fill();
+  }
+
+  for(const sm of smallMonsters){
+    miniCtx.beginPath();
+    miniCtx.arc(sm.x * mapScale, sm.y * mapScale, 2, 0, Math.PI * 2);
+    miniCtx.fillStyle = sm.isElite ? '#dd44ff' : '#a06030';
+    miniCtx.fill();
+  }
+
+  miniCtx.fillStyle = '#553311';
+  for(const mine of boogerMines){
+    miniCtx.beginPath();
+    miniCtx.arc(mine.x * mapScale, mine.y * mapScale, 2, 0, Math.PI * 2);
+    miniCtx.fill();
+  }
+
+  miniCtx.fillStyle = '#996633';
+  for(const bullet of boogerBullets){
+    miniCtx.beginPath();
+    miniCtx.arc(bullet.x * mapScale, bullet.y * mapScale, 1, 0, Math.PI * 2);
+    miniCtx.fill();
+  }
+
+  miniCtx.fillStyle="#ffdd00";
+  for(const b of playerBullets){
+    miniCtx.beginPath();
+    miniCtx.arc(b.x*mapScale,b.y*mapScale,1,0,Math.PI*2);
+    miniCtx.fill();
+  }
+
+  for(const item of items){
+    miniCtx.beginPath();
+    miniCtx.arc(item.x*mapScale, item.y*mapScale, 2, 0, Math.PI*2);
+    if(item.type ==="heal") miniCtx.fillStyle="#44dd44";
+    else if(item.type ==="speed") miniCtx.fillStyle="#44aaff";
+    else if(item.type ==="shield") miniCtx.fillStyle="#ffdd22";
+    else if(item.type ==="explosive") miniCtx.fillStyle="#ff5522";
+    else if(item.type ==="rapid") miniCtx.fillStyle="#dd22ff";
+    else if(item.type ==="bomb") miniCtx.fillStyle="#ee1111";
+    else if(WEAPON_ITEM_COLOR[item.type]) miniCtx.fillStyle = WEAPON_ITEM_COLOR[item.type];
+    miniCtx.fill();
+  }
+
+  miniCtx.strokeStyle = '#555';
+  miniCtx.lineWidth = 1;
+  miniCtx.strokeRect(0, 0, 160, 160);
+}
+
+/* ==================================================
+   主循环
+   ================================================== */
+let minimapTick = 0;
+
+function gameLoop(){
+  requestAnimationFrame(gameLoop);
+  if(!gameRunning) return;
+
+  fpsFrames++;
+  const now = performance.now();
+  if(now - fpsLastTime >= 500){
+    fpsCurrent = Math.round(fpsFrames * 1000 / (now - fpsLastTime));
+    fpsFrames = 0;
+    fpsLastTime = now;
+  }
+
+  const gSpeed = cheats.gameSpeed;
+
+  if(cheats.allItems){
+    const f = cheats.itemFlags;
+    if(f.heal && player.hp < player.maxHp){
+      player.hp = Math.min(player.maxHp, player.hp + 0.3);
+      hpText.textContent = Math.floor(player.hp);
+    }
+    if(f.speed) player.speedBuffTimer = Math.max(player.speedBuffTimer, 5);
+    if(f.shield) player.shieldTimer = Math.max(player.shieldTimer, 10);
+    if(f.explosive) player.explosiveTimer = Math.max(player.explosiveTimer, 10);
+    if(f.rapid) player.rapidTimer = Math.max(player.rapidTimer, 10);
+    if(f.bomb) player.bombTimer = Math.max(player.bombTimer, 10);
+  }
+  if(cheats.infShield) player.shieldTimer = Math.max(player.shieldTimer, 10);
+
+  if(player.shootCooldown>0) player.shootCooldown -= gSpeed;
+  if(player.speedBuffTimer > 0){
+    player.speedBuffTimer -= gSpeed;
+    if(player.speedBuffTimer <= 0){ player.speedBuffTimer = 0; recalcPlayerSpeed(); }
+  }
+  if(player.slowDebuffTimer > 0){
+    player.slowDebuffTimer -= gSpeed;
+    if(player.slowDebuffTimer <= 0){ player.slowDebuffTimer = 0; recalcPlayerSpeed(); }
+  }
+  if(player.hurtTimer>0) player.hurtTimer -= gSpeed;
+  if(player.invincibleTimer>0) player.invincibleTimer -= gSpeed;
+  if(player.shieldTimer>0) player.shieldTimer -= gSpeed;
+  if(player.explosiveTimer>0) player.explosiveTimer -= gSpeed;
+  if(player.rapidTimer>0) player.rapidTimer -= gSpeed;
+  if(player.bombTimer>0) player.bombTimer -= gSpeed;
+
+  if(comboTimer > 0){
+    comboTimer -= gSpeed;
+    if(comboTimer <= 0 && !cheats.infCombo) combo = 0;
+  }
+
+  if(player.weaponTimer > 0){
+    player.weaponTimer -= gSpeed;
+    if(player.weaponTimer <= 0){
+      player.weaponTimer = 0;
+      switchWeapon("pistol");
+    }
+    updateWeaponHud();
+  }
+
+  if(cheats.autoFire && player.shootCooldown <= 0){
+    const target = findNearestEnemy();
+    if(target) fireWeapon(target.x, target.y);
+  }
+
+  let moveX = 0, moveY = 0;
+  if(keys.w) moveY -= 1;
+  if(keys.s) moveY += 1;
+  if(keys.a) moveX -= 1;
+  if(keys.d) moveX += 1;
+
+  if(isMobile && joystick.active){
+    const dist = Math.sqrt(joystick.dx * joystick.dx + joystick.dy * joystick.dy);
+    if(dist > 5){
+      moveX = joystick.dx / dist;
+      moveY = joystick.dy / dist;
+    }
+  }
+
+  const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
+  if(moveLen > 0){
+    moveX /= moveLen; moveY /= moveLen;
+    const spd = player.speed * cheats.speedMul * gSpeed;
+    player.x += moveX * spd;
+    player.y += moveY * spd;
+  }
+
+  player.x = Math.max(player.radius, Math.min(MAP_WIDTH - player.radius, player.x));
+  player.y = Math.max(player.radius, Math.min(MAP_HEIGHT - player.radius, player.y));
+
+  if(!boogerMonster.dead){
+    if(boogerMonster.stunTimer>0){
+      boogerMonster.stunTimer -= gSpeed;
+    }else if(!cheats.freeze){
+      const dx = player.x - boogerMonster.x;
+      const dy = player.y - boogerMonster.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if(d > 0){
+        boogerMonster.x += (dx / d) * boogerMonster.speed * gSpeed;
+        boogerMonster.y += (dy / d) * boogerMonster.speed * gSpeed;
+      }
+    }
+
+    boogerMonster.skillTimer -= gSpeed;
+    if(boogerMonster.skillTimer <= 0 && boogerMonster.activeSkill === "none"){
+      const rand = Math.random();
+      if(rand < 0.15){
+        boogerMonster.activeSkill = "summon";
+        boogerMonster.summonWaveIndex = 0;
+        boogerMonster.summonWaveTimer = 0;
+      }else if(rand < 0.43){
+        boogerMonster.activeSkill = "bullet";
+        boogerMonster.fireCount = 0;
+        boogerMonster.fireTimer = boogerMonster.fireDelay;
+      }else if(rand < 0.71){
+        boogerMonster.activeSkill = "mine";
+        boogerMonster.mineSpawnCount = 0;
+        boogerMonster.mineSpawnTimer = boogerMonster.mineSpawnDelay;
+      }else{
+        boogerMonster.activeSkill = "scatter";
+        boogerMonster.scatterRound = 0;
+        boogerMonster.scatterTimer = boogerMonster.scatterDelay;
+      }
+    }
+
+    if(boogerMonster.activeSkill === "bullet"){
+      boogerMonster.fireTimer -= gSpeed;
+      if(boogerMonster.fireTimer <= 0 && boogerMonster.fireCount < 8){
+        const bdx = player.x - boogerMonster.x;
+        const bdy = player.y - boogerMonster.y;
+        const bDist = Math.sqrt(bdx * bdx + bdy * bdy);
+        if(bDist > 0 && boogerBullets.length < MAX_BULLETS){
+          boogerBullets.push({
+            x: boogerMonster.x, y: boogerMonster.y,
+            vx: (bdx / bDist) * 3.2 * gSpeed,
+            vy: (bdy / bDist) * 3.2 * gSpeed,
+            radius: 12, life: 450
+          });
+        }
+        boogerMonster.fireCount++;
+        boogerMonster.fireTimer = boogerMonster.fireDelay;
+      }
+      if(boogerMonster.fireCount >= 8){
+        boogerMonster.activeSkill = "none";
+        boogerMonster.skillTimer = boogerMonster.skillCooldown;
+      }
+    }
+
+    if(boogerMonster.activeSkill === "mine"){
+      boogerMonster.mineSpawnTimer -= gSpeed;
+      if(boogerMonster.mineSpawnTimer <= 0 && boogerMonster.mineSpawnCount < 5){
+        boogerMines.push({ x: Math.random() * MAP_WIDTH, y: Math.random() * MAP_HEIGHT, radius: 22, blinkTimer: 0 });
+        boogerMonster.mineSpawnCount++;
+        boogerMonster.mineSpawnTimer = boogerMonster.mineSpawnDelay;
+      }
+      if(boogerMonster.mineSpawnCount >= 5){
+        boogerMonster.activeSkill = "none";
+        boogerMonster.skillTimer = boogerMonster.skillCooldown;
+      }
+    }
+
+    if(boogerMonster.activeSkill === "scatter"){
+      boogerMonster.scatterTimer -= gSpeed;
+      if(boogerMonster.scatterTimer <= 0 && boogerMonster.scatterRound < 3){
+        const bulletCount = 12;
+        for(let i = 0; i < bulletCount; i++){
+          if(boogerBullets.length >= MAX_BULLETS) break;
+          const angle = (i / bulletCount) * Math.PI * 2;
+          boogerBullets.push({
+            x: boogerMonster.x, y: boogerMonster.y,
+            vx: Math.cos(angle) * 2.8 * gSpeed,
+            vy: Math.sin(angle) * 2.8 * gSpeed,
+            radius: 12, life: 450
+          });
+        }
+        boogerMonster.scatterRound++;
+        boogerMonster.scatterTimer = boogerMonster.scatterDelay;
+      }
+      if(boogerMonster.scatterRound >= 3){
+        boogerMonster.activeSkill = "none";
+        boogerMonster.skillTimer = boogerMonster.skillCooldown;
+      }
+    }
+
+    if(boogerMonster.activeSkill === "summon"){
+      spawnSmallMonstersFromBoss(SUMMON_PER_WAVE);
+      boogerMonster.activeSkill = "none";
+      boogerMonster.skillTimer = boogerMonster.skillCooldown;
+    }
+  }
+
+  for(let i = bossClones.length - 1; i >= 0; i--){
+    const bc = bossClones[i];
+    if(bc.hurtTimer > 0) bc.hurtTimer -= gSpeed;
+
+    if(bc.stunTimer > 0){
+      bc.stunTimer -= gSpeed;
+    }else if(!cheats.freeze){
+      const dx = player.x - bc.x;
+      const dy = player.y - bc.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if(d > 0){
+        bc.x += (dx / d) * bc.speed * gSpeed;
+        bc.y += (dy / d) * bc.speed * gSpeed;
+      }
+    }
+
+    bc.skillTimer -= gSpeed;
+    if(bc.skillTimer <= 0 && bc.activeSkill === "none"){
+      const r = Math.random();
+      if(r < 0.5){
+        bc.activeSkill = "bullet";
+        bc.fireCount = 0;
+        bc.fireTimer = bc.fireDelay;
+      }else{
+        bc.activeSkill = "scatter";
+        bc.scatterRound = 0;
+        bc.scatterTimer = bc.scatterDelay;
+      }
+    }
+
+    if(bc.activeSkill === "bullet"){
+      bc.fireTimer -= gSpeed;
+      if(bc.fireTimer <= 0 && bc.fireCount < 6){
+        const bdx = player.x - bc.x;
+        const bdy = player.y - bc.y;
+        const bDist = Math.sqrt(bdx * bdx + bdy * bdy);
+        if(bDist > 0 && boogerBullets.length < MAX_BULLETS){
+          boogerBullets.push({
+            x: bc.x, y: bc.y,
+            vx: (bdx / bDist) * 3.0 * gSpeed,
+            vy: (bdy / bDist) * 3.0 * gSpeed,
+            radius: 10, life: 400
+          });
+        }
+        bc.fireCount++;
+        bc.fireTimer = bc.fireDelay;
+      }
+      if(bc.fireCount >= 6){
+        bc.activeSkill = "none";
+        bc.skillTimer = BOSS_CLONE_SKILL_CD;
+      }
+    }
+
+    if(bc.activeSkill === "scatter"){
+      bc.scatterTimer -= gSpeed;
+      if(bc.scatterTimer <= 0 && bc.scatterRound < 2){
+        const bulletCount = 8;
+        for(let k = 0; k < bulletCount; k++){
+          if(boogerBullets.length >= MAX_BULLETS) break;
+          const angle = (k / bulletCount) * Math.PI * 2;
+          boogerBullets.push({
+            x: bc.x, y: bc.y,
+            vx: Math.cos(angle) * 2.5 * gSpeed,
+            vy: Math.sin(angle) * 2.5 * gSpeed,
+            radius: 10, life: 400
+          });
+        }
+        bc.scatterRound++;
+        bc.scatterTimer = bc.scatterDelay;
+      }
+      if(bc.scatterRound >= 2){
+        bc.activeSkill = "none";
+        bc.skillTimer = BOSS_CLONE_SKILL_CD;
+      }
+    }
+
+    const rr = player.radius + bc.radius;
+    const hitD2 = dist2(player.x, player.y, bc.x, bc.y);
+    if(hitD2 < rr * rr && !cheats.invincible && player.shieldTimer <= 0){
+      const dmg = 25;
+      if(cheats.reflect){
+        bc.hp -= dmg * 2;
+        bc.hurtTimer = 8;
+        if(bc.hp <= 0){
+          spawnExplosion(bc.x, bc.y);
+          swapRemove(bossClones, i);
+          addCombo();
+        }
+      }else{
+        player.hp -= dmg;
+        hpText.textContent = player.hp;
+        player.slowDebuffTimer = 100;
+        recalcPlayerSpeed();
+        player.hurtTimer = 30;
+        player.invincibleTimer = 60;
+        spawnDamageText(player.x, player.y - 20, dmg, true);
+        triggerShake(14, 24);
+        if(player.hp <= 0){ endGame("被大鼻屎怪分身撞死！游戏结束"); return; }
+      }
+    }
+  }
+
+  if(boogerMonster.deathAnimTimer > 0){
+    boogerMonster.deathAnimTimer -= gSpeed;
+    if(boogerMonster.deathAnimTimer % 4 < gSpeed){
+      spawnExplosion(
+        boogerMonster.x + (Math.random() - 0.5) * 90,
+        boogerMonster.y + (Math.random() - 0.5) * 90
+      );
+    }
+    if(boogerMonster.deathAnimTimer % 8 < gSpeed){
+      triggerShake(8, 6);
+    }
+  }
+
+  if(boogerMonster.dead && boogerMonster.deathWaveIndex < DEATH_WAVES){
+    const allSpawned = smallMonsters.every(sm => sm.spawnAnimTimer <= 0);
+    if(allSpawned){
+      boogerMonster.deathWaveTimer -= gSpeed;
+      if(boogerMonster.deathWaveTimer <= 0){
+        spawnSmallMonstersFromBoss(SUMMON_PER_WAVE);
+        boogerMonster.deathWaveIndex++;
+        boogerMonster.deathWaveTimer = DEATH_WAVE_DELAY;
+      }
+    }
+  }
+
+  for(let i = boogerBullets.length - 1; i >= 0; i--){
+    const bullet = boogerBullets[i];
+    bullet.x += bullet.vx;
+    bullet.y += bullet.vy;
+    bullet.life -= gSpeed;
+    if(bullet.life <= 0){ swapRemove(boogerBullets, i); continue; }
+    const rr = bullet.radius + player.radius;
+    const hitD2 = dist2(bullet.x, bullet.y, player.x, player.y);
+    if(hitD2 < rr * rr && player.invincibleTimer <= 0 && player.shieldTimer <= 0 && !cheats.invincible){
+      const dmg = 12;
+      player.hp -= dmg;
+      hpText.textContent = player.hp;
+      player.slowDebuffTimer = 80;
+      recalcPlayerSpeed();
+      player.hurtTimer = 30;
+      player.invincibleTimer = 45;
+      spawnDamageText(player.x, player.y - 20, dmg, true);
+      triggerShake(9, 16);
+      swapRemove(boogerBullets, i);
+      if(player.hp <= 0){ endGame("血量耗尽！游戏结束"); return; }
+    }
+  }
+
+  for(let i = playerBullets.length - 1; i >= 0; i--){
+    const b = playerBullets[i];
+    b.x += b.vx; b.y += b.vy; b.life -= gSpeed;
+    if(b.life <= 0){ swapRemove(playerBullets, i); continue; }
+
+    let consumed = false;
+
+    if(b.bomb){
+      let hitSomething = false;
+      if(!boogerMonster.dead){
+        const rr = b.radius + boogerMonster.radius;
+        if(dist2(b.x, b.y, boogerMonster.x, boogerMonster.y) < rr * rr) hitSomething = true;
+      }
+      if(!hitSomething){
+        for(let k = 0; k < bossClones.length; k++){
+          const bc = bossClones[k];
+          const rr = b.radius + bc.radius;
+          if(dist2(b.x, b.y, bc.x, bc.y) < rr * rr){ hitSomething = true; break; }
+        }
+      }
+      if(!hitSomething){
+        for(let j = 0; j < smallMonsters.length; j++){
+          const sm = smallMonsters[j];
+          if(sm.spawnAnimTimer > 0) continue;
+          const rr = b.radius + sm.radius;
+          if(dist2(b.x, b.y, sm.x, sm.y) < rr * rr){ hitSomething = true; break; }
+        }
+      }
+      if(hitSomething){
+        spawnBombBlast(b.x, b.y);
+        swapRemove(playerBullets, i);
+        continue;
+      }
+      for(let j = boogerMines.length - 1; j >= 0; j--){
+        const mine = boogerMines[j];
+        const rr = b.radius + mine.radius;
+        if(dist2(b.x, b.y, mine.x, mine.y) < rr * rr){
+          spawnBombBlast(b.x, b.y);
+          swapRemove(boogerMines, j);
+          swapRemove(playerBullets, i);
+          consumed = true;
+          break;
+        }
+      }
+      if(consumed) continue;
+      continue;
+    }
+
+    if(!boogerMonster.dead && (!b.hitSet || !b.hitSet.has('boss'))){
+      const rr = b.radius + boogerMonster.radius;
+      if(dist2(b.x, b.y, boogerMonster.x, boogerMonster.y) < rr * rr){
+        let dmg = b.damage;
+        if(b.explosive){ dmg = 40; spawnExplosion(b.x, b.y); triggerShakeAt(b.x, b.y, 7, 10); playSfx('smallExplosion', 60); }
+        dmg = applyDamageMultiplier(dmg);
+        boogerMonster.stunTimer = 90;
+        boogerMonster.hp -= dmg;
+        spawnHitParticle(b.x, b.y);
+        spawnDamageText(boogerMonster.x, boogerMonster.y - 80, dmg, false);
+        if(!b.explosive) playSfx('hit', 50);
+        if(b.grenade){ spawnBombBlast(b.x, b.y); swapRemove(playerBullets, i); continue; }
+        if(b.pierce){ b.hitSet.add('boss'); } else { consumed = true; }
+        if(boogerMonster.hp <= 0) killBossNow();
+      }
+    }
+
+    if(!consumed){
+      for(let k = bossClones.length - 1; k >= 0; k--){
+        const bc = bossClones[k];
+        if(b.hitSet && b.hitSet.has(bc)) continue;
+        const rr = b.radius + bc.radius;
+        if(dist2(b.x, b.y, bc.x, bc.y) < rr * rr){
+          let dmg = b.damage;
+          if(b.explosive){ dmg = 40; spawnExplosion(b.x, b.y); triggerShakeAt(b.x, b.y, 7, 10); playSfx('smallExplosion', 60); }
+          dmg = applyDamageMultiplier(dmg);
+          bc.hp -= dmg; bc.hurtTimer = 8; bc.stunTimer = Math.max(bc.stunTimer, 30);
+          spawnHitParticle(b.x, b.y);
+          spawnDamageText(bc.x, bc.y - 60, dmg, false);
+          if(!b.explosive) playSfx('hit', 50);
+          if(b.grenade){ spawnBombBlast(b.x, b.y); swapRemove(playerBullets, i); consumed = true; break; }
+          if(b.pierce){ b.hitSet.add(bc); } else { consumed = true; }
+          if(bc.hp <= 0){
+            spawnExplosion(bc.x, bc.y);
+            triggerShakeAt(bc.x, bc.y, 10, 18);
+            playSfx('smallExplosion', 60);
+            swapRemove(bossClones, k);
+            addCombo();
+          }
+          if(consumed) break;
+        }
+      }
+    }
+
+    if(!consumed){
+      for(let j = smallMonsters.length - 1; j >= 0; j--){
+        const sm = smallMonsters[j];
+        if(b.hitSet && b.hitSet.has(sm)) continue;
+        if(sm.spawnAnimTimer > 0) continue;
+        const rr = b.radius + sm.radius;
+        if(dist2(b.x, b.y, sm.x, sm.y) < rr * rr){
+          let dmg = b.damage;
+          if(b.explosive){ dmg = 40; spawnExplosion(b.x, b.y); triggerShakeAt(b.x, b.y, 7, 10); playSfx('smallExplosion', 60); }
+          dmg = applyDamageMultiplier(dmg);
+          sm.hp -= dmg; sm.hurtTimer = 8;
+          spawnHitParticle(b.x, b.y);
+          spawnDamageText(sm.x, sm.y - 30, dmg, false);
+          if(!b.explosive) playSfx('hit', 50);
+          if(b.grenade){ spawnBombBlast(b.x, b.y); swapRemove(playerBullets, i); consumed = true; break; }
+          if(b.pierce){ b.hitSet.add(sm); } else { consumed = true; }
+          if(sm.hp <= 0){
+            spawnExplosion(sm.x, sm.y);
+            triggerShakeAt(sm.x, sm.y, 6, 12);
+            playSfx('smallExplosion', 60);
+            swapRemove(smallMonsters, j);
+            addCombo();
+          }
+          if(consumed) break;
+        }
+      }
+    }
+
+    if(consumed) swapRemove(playerBullets, i);
+  }
+
+  for(let i = smallMonsters.length - 1; i >= 0; i--){
+    const sm = smallMonsters[i];
+    if(sm.hurtTimer > 0) sm.hurtTimer -= gSpeed;
+
+    if(sm.spawnAnimTimer > 0){
+      sm.spawnAnimTimer -= gSpeed;
+      const t = 1 - sm.spawnAnimTimer / sm.spawnAnimTotal;
+      const ease = 1 - Math.pow(1 - t, 3);
+      let px = sm.spawnStartX + (sm.spawnTargetX - sm.spawnStartX) * ease;
+      let py = sm.spawnStartY + (sm.spawnTargetY - sm.spawnStartY) * ease;
+      const perpX = -Math.sin(sm.spawnAngle);
+      const perpY =  Math.cos(sm.spawnAngle);
+      const curveAmount = Math.sin(t * Math.PI) * 80 * sm.spawnCurve;
+      px += perpX * curveAmount;
+      py += perpY * curveAmount;
+      sm.x = px;
+      sm.y = py;
+      continue;
+    }
+
+    if(!cheats.freeze){
+      const dx = player.x - sm.x;
+      const dy = player.y - sm.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if(d > 0){
+        sm.x += (dx / d) * sm.speed * gSpeed;
+        sm.y += (dy / d) * sm.speed * gSpeed;
+      }
+    }
+
+    sm.shootTimer -= gSpeed;
+    if(sm.shootTimer <= 0 && !cheats.freeze){
+      sm.shootTimer = SMALL_SHOOT_INTERVAL;
+      const bulletCount = 12;
+      for(let k = 0; k < bulletCount; k++){
+        if(smallBullets.length >= MAX_BULLETS) break;
+        const angle = (k / bulletCount) * Math.PI * 2;
+        smallBullets.push({
+          x: sm.x, y: sm.y,
+          vx: Math.cos(angle) * SMALL_BULLET_SPEED * gSpeed,
+          vy: Math.sin(angle) * SMALL_BULLET_SPEED * gSpeed,
+          radius: SMALL_BULLET_RADIUS,
+          life: 400
+        });
+      }
+    }
+
+    const rr = sm.radius + player.radius;
+    const hitD2 = dist2(player.x, player.y, sm.x, sm.y);
+    if(hitD2 < rr * rr &&
+       player.invincibleTimer <= 0 && player.shieldTimer <= 0 && !cheats.invincible){
+      const dmg = 15;
+      if(cheats.reflect){
+        sm.hp -= dmg * 2;
+        sm.hurtTimer = 8;
+        if(sm.hp <= 0){
+          spawnExplosion(sm.x, sm.y);
+          swapRemove(smallMonsters, i);
+          addCombo();
+        }
+      }else{
+        player.hp -= dmg;
+        hpText.textContent = player.hp;
+        player.slowDebuffTimer = 60;
+        recalcPlayerSpeed();
+        player.hurtTimer = 30;
+        player.invincibleTimer = 45;
+        spawnDamageText(player.x, player.y - 20, dmg, true);
+        triggerShake(9, 16);
+        if(player.hp <= 0){ endGame("被小鼻屎怪撞死！游戏结束"); return; }
+      }
+    }
+  }
+
+  for(let i = 0; i < smallMonsters.length; i++){
+    const a = smallMonsters[i];
+    if(a.spawnAnimTimer > 0) continue;
+    for(let j = i + 1; j < smallMonsters.length; j++){
+      const b = smallMonsters[j];
+      if(b.spawnAnimTimer > 0) continue;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const distSq = dx * dx + dy * dy;
+      const minDist = a.radius + b.radius;
+      const minDistSq = minDist * minDist;
+      if(distSq > 0 && distSq < minDistSq){
+        const dist = Math.sqrt(distSq);
+        const overlap = (minDist - dist) * 0.5;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        a.x -= nx * overlap; a.y -= ny * overlap;
+        b.x += nx * overlap; b.y += ny * overlap;
+      }else if(distSq === 0){
+        const angle = Math.random() * Math.PI * 2;
+        const push = minDist * 0.5;
+        a.x -= Math.cos(angle) * push;
+        a.y -= Math.sin(angle) * push;
+        b.x += Math.cos(angle) * push;
+        b.y += Math.sin(angle) * push;
+      }
+    }
+  }
+
+  for(let i = smallBullets.length - 1; i >= 0; i--){
+    const b = smallBullets[i];
+    b.x += b.vx; b.y += b.vy; b.life -= gSpeed;
+    if(b.life <= 0){ swapRemove(smallBullets, i); continue; }
+    const rr = b.radius + player.radius;
+    const hitD2 = dist2(b.x, b.y, player.x, player.y);
+    if(hitD2 < rr * rr &&
+       player.invincibleTimer <= 0 && player.shieldTimer <= 0 && !cheats.invincible){
+      player.hp -= SMALL_BULLET_DAMAGE;
+      hpText.textContent = player.hp;
+      player.hurtTimer = 20;
+      player.invincibleTimer = 30;
+      spawnDamageText(player.x, player.y - 20, SMALL_BULLET_DAMAGE, true);
+      triggerShake(7, 12);
+      swapRemove(smallBullets, i);
+      if(player.hp <= 0){ endGame("血量耗尽！游戏结束"); return; }
+    }
+  }
+
+  if(boogerMonster.dead && boogerMonster.deathWaveIndex >= DEATH_WAVES
+     && boogerMonster.deathAnimTimer <= 0 && smallMonsters.length === 0 && bossClones.length === 0){
+    endGame("你击败了所有鼻屎怪！胜利！");
+    return;
+  }
+
+  for(let i = boogerMines.length - 1; i >= 0; i--){
+    const mine = boogerMines[i];
+    mine.blinkTimer += gSpeed;
+    const rr = mine.radius + player.radius;
+    const hitD2 = dist2(mine.x, mine.y, player.x, player.y);
+    if(hitD2 < rr * rr && player.invincibleTimer <=0 && player.shieldTimer <=0 && !cheats.invincible){
+      const dmg = 30;
+      player.hp -= dmg;
+      hpText.textContent = player.hp;
+      player.slowDebuffTimer = 150;
+      recalcPlayerSpeed();
+      player.hurtTimer = 30;
+      player.invincibleTimer = 45;
+      spawnExplosion(mine.x, mine.y);
+      spawnDamageText(player.x, player.y - 20, dmg, true);
+      triggerShake(16, 30);
+      playSfx('smallExplosion', 80);
+      swapRemove(boogerMines, i);
+      if(player.hp <= 0){ endGame("踩中鼻屎地雷，血量耗尽！游戏结束"); return; }
+    }
+  }
+
+  for(let i = items.length -1; i >=0; i--){
+    const item = items[i];
+    item.pulseTimer += gSpeed;
+    const rr = item.radius + player.radius;
+    const distSq = dist2(item.x, item.y, player.x, player.y);
+    if(distSq < rr * rr){
+      if(item.type === "heal"){
+        player.hp = Math.min(player.maxHp, player.hp + 30);
+        hpText.textContent = player.hp;
+        spawnDamageText(player.x, player.y - 20, "+30", false);
+      }else if(item.type === "speed"){
+        player.speedBuffTimer = 120;
+        recalcPlayerSpeed();
+      }else if(item.type === "shield"){
+        player.shieldTimer = 200;
+        spawnDamageText(player.x, player.y - 20, "🛡️护盾!", false);
+      }else if(item.type === "explosive"){
+        player.explosiveTimer = 250;
+        spawnDamageText(player.x, player.y - 20, "💥爆炸弹!", false);
+      }else if(item.type === "rapid"){
+        player.rapidTimer = 220;
+        spawnDamageText(player.x, player.y - 20, "⚡连射!", false);
+      }else if(item.type === "bomb"){
+        player.bombTimer = BOMB_DURATION;
+        spawnDamageText(player.x, player.y - 20, "💣炸弹!", false);
+      }
+      else if(WEAPON_ITEM_MAP[item.type]){
+        const wkey = WEAPON_ITEM_MAP[item.type];
+        switchWeapon(wkey, true);
+        spawnDamageText(player.x, player.y - 20, WEAPONS[wkey].name + "!", false);
+      }
+      swapRemove(items, i);
+      spawnItem();
+    }
+  }
+
+  for(let i = particles.length - 1; i >= 0; i--){
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.life -= gSpeed;
+    if(p.life <= 0) swapRemove(particles, i);
+  }
+  for(let i = damageTexts.length - 1; i >= 0; i--){
+    const t = damageTexts[i];
+    t.y += t.vy; t.life -= gSpeed;
+    if(t.life <= 0) swapRemove(damageTexts, i);
+  }
+  for(let i = bombBlasts.length - 1; i >= 0; i--){
+    const blast = bombBlasts[i];
+    blast.life -= gSpeed;
+    const t = 1 - blast.life / blast.maxLife;
+    blast.radius = 10 + (blast.maxRadius - 10) * t;
+    if(blast.life <= 0) swapRemove(bombBlasts, i);
+  }
+
+  camera.x = player.x - canvas.width / 2;
+  camera.y = player.y - canvas.height / 2;
+
+  if(shakeTime > 0){
+    shakeTime -= gSpeed;
+    const p = shakePower * Math.max(0, shakeTime / 60);
+    shakeX = (Math.random() - 0.5) * 2 * p;
+    shakeY = (Math.random() - 0.5) * 2 * p;
+  }else{
+    shakeX = 0; shakeY = 0; shakePower = 0;
+  }
+
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  ctx.fillStyle = cheats.nightVision ? '#000' : '#222';
+  ctx.fillRect(-60, -60, canvas.width + 120, canvas.height + 120);
+
+  ctx.strokeStyle = cheats.nightVision ? '#0a0a0a' : '#333';
+  ctx.lineWidth = 1;
+  const gridSize = 80;
+  const startX = -camera.x % gridSize;
+  const startY = -camera.y % gridSize;
+  for(let x = startX; x < canvas.width; x += gridSize){
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for(let y = startY; y < canvas.height; y += gridSize){
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
+
+  function getColor(orig){
+    if(!cheats.rainbow) return orig;
+    const hue = (performance.now() / 10) % 360;
+    return `hsl(${hue}, 90%, 60%)`;
+  }
+
+  for(const item of items){
+    const ix = item.x - camera.x;
+    const iy = item.y - camera.y;
+    if(ix < -50 || ix > canvas.width + 50 || iy < -50 || iy > canvas.height + 50) continue;
+    const pulse = Math.sin(item.pulseTimer * 0.08) * 4;
+    const r = item.radius + pulse;
+    ctx.beginPath();
+    ctx.arc(ix, iy, r, 0, Math.PI*2);
+    if(item.type === "heal") ctx.fillStyle=getColor("#44dd44");
+    else if(item.type === "speed") ctx.fillStyle=getColor("#44aaff");
+    else if(item.type === "shield") ctx.fillStyle=getColor("#ffdd22");
+    else if(item.type === "explosive") ctx.fillStyle=getColor("#ff5522");
+    else if(item.type === "rapid") ctx.fillStyle=getColor("#dd22ff");
+    else if(item.type === "bomb") ctx.fillStyle=getColor("#cc1111");
+    else if(WEAPON_ITEM_COLOR[item.type]) ctx.fillStyle = getColor(WEAPON_ITEM_COLOR[item.type]);
+    ctx.fill();
+    ctx.fillStyle="#fff";
+    ctx.font="bold 16px Arial";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    let icon = "";
+    if(item.type === "heal") icon = "+";
+    else if(item.type === "speed") icon = "⚡";
+    else if(item.type === "shield") icon = "🛡️";
+    else if(item.type === "explosive") icon = "💥";
+    else if(item.type === "rapid") icon = "🔥";
+    else if(item.type === "bomb") icon = "💣";
+    else if(WEAPON_ITEM_ICON[item.type]) icon = WEAPON_ITEM_ICON[item.type];
+    ctx.fillText(icon, ix, iy);
+  }
+
+  for(const bullet of boogerBullets){
+    const bx = bullet.x - camera.x;
+    const by = bullet.y - camera.y;
+    if(bx < -50 || bx > canvas.width + 50 || by < -50 || by > canvas.height + 50) continue;
+    const glowR = bullet.radius + 6;
+    const bulletGlow = ctx.createRadialGradient(bx, by, bullet.radius, bx, by, glowR);
+    bulletGlow.addColorStop(0, 'rgba(65,40,15,0.5)');
+    bulletGlow.addColorStop(1, 'rgba(65,40,15,0)');
+    ctx.beginPath(); ctx.arc(bx, by, glowR, 0, Math.PI * 2);
+    ctx.fillStyle = bulletGlow; ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by, bullet.radius, 0, Math.PI * 2);
+    ctx.fillStyle = getColor('#41280f'); ctx.fill();
+  }
+
+  for(const b of smallBullets){
+    const bx = b.x - camera.x;
+    const by = b.y - camera.y;
+    if(bx < -50 || bx > canvas.width + 50 || by < -50 || by > canvas.height + 50) continue;
+    ctx.beginPath();
+    ctx.arc(bx, by, b.radius, 0, Math.PI * 2);
+    ctx.fillStyle = getColor('#6b4a1e');
+    ctx.fill();
+    ctx.strokeStyle = '#8a6a3a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  for(const b of playerBullets){
+    const sx = b.x - camera.x;
+    const sy = b.y - camera.y;
+    if(sx < -50 || sx > canvas.width + 50 || sy < -50 || sy > canvas.height + 50) continue;
+    const glowR = b.radius +5;
+    const glow = ctx.createRadialGradient(sx,sy,b.radius,sx,sy,glowR);
+    if(b.bomb){
+      glow.addColorStop(0, "rgba(255,40,40,0.85)");
+      glow.addColorStop(1,"rgba(255,40,40,0)");
+    }else{
+      glow.addColorStop(0, "rgba(255,220,0,0.6)");
+      glow.addColorStop(1,"rgba(255,220,0,0)");
+    }
+    ctx.beginPath(); ctx.arc(sx,sy,glowR,0,Math.PI*2);
+    ctx.fillStyle = glow; ctx.fill();
+    ctx.beginPath(); ctx.arc(sx,sy,b.radius,0,Math.PI*2);
+    if(b.bomb) ctx.fillStyle = getColor("#ee1111");
+    else if(b.explosive) ctx.fillStyle = getColor("#ff7700");
+    else ctx.fillStyle = getColor(b.color || "#ffdd00");
+    ctx.fill();
+  }
+
+  for(const blast of bombBlasts){
+    const bx = blast.x - camera.x;
+    const by = blast.y - camera.y;
+    const t = 1 - blast.life / blast.maxLife;
+    const alpha = 1 - t;
+    ctx.beginPath();
+    ctx.arc(bx, by, blast.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,80,40,${alpha})`;
+    ctx.lineWidth = 6 * alpha + 2;
+    ctx.stroke();
+    const grad = ctx.createRadialGradient(bx, by, 0, bx, by, blast.radius);
+    grad.addColorStop(0, `rgba(255,220,120,${alpha * 0.7})`);
+    grad.addColorStop(0.5, `rgba(255,120,40,${alpha * 0.5})`);
+    grad.addColorStop(1, `rgba(255,60,20,0)`);
+    ctx.beginPath();
+    ctx.arc(bx, by, blast.radius, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  for(const mine of boogerMines){
+    const mx = mine.x - camera.x;
+    const my = mine.y - camera.y;
+    if(mx < -60 || mx > canvas.width + 60 || my < -60 || my > canvas.height + 60) continue;
+    const glowR = mine.radius + 12;
+    const blinkAlpha = 0.35 + Math.sin(mine.blinkTimer * 0.12) * 0.25;
+    const mineGlow = ctx.createRadialGradient(mx, my, mine.radius, mx, my, glowR);
+    mineGlow.addColorStop(0, `rgba(80,48,18,${blinkAlpha})`);
+    mineGlow.addColorStop(0.5, `rgba(80,48,18,${blinkAlpha * 0.5})`);
+    mineGlow.addColorStop(1, 'rgba(80,48,18,0)');
+    ctx.beginPath(); ctx.arc(mx, my, glowR, 0, Math.PI * 2);
+    ctx.fillStyle = mineGlow; ctx.fill();
+    ctx.beginPath(); ctx.arc(mx, my, mine.radius, 0, Math.PI * 2);
+    ctx.fillStyle = getColor('#553311'); ctx.fill();
+    ctx.fillStyle = getColor('#2b1808');
+    ctx.beginPath();
+    ctx.arc(mx - 6, my - 5, 4, 0, Math.PI * 2);
+    ctx.arc(mx + 7, my + 4, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for(const p of particles){
+    const px = p.x - camera.x;
+    const py = p.y - camera.y;
+    if(px < -20 || px > canvas.width + 20 || py < -20 || py > canvas.height + 20) continue;
+    ctx.globalAlpha = Math.max(0, p.life / 40);
+    ctx.beginPath(); ctx.arc(px, py, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = getColor(p.color); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  for(const bc of bossClones){
+    const bx = bc.x - camera.x;
+    const by = bc.y - camera.y;
+    if(bx < -120 || bx > canvas.width + 120 || by < -120 || by > canvas.height + 120) continue;
+    const glowSize = 14;
+    const glow = ctx.createRadialGradient(bx, by, bc.radius, bx, by, bc.radius + glowSize);
+    glow.addColorStop(0, 'rgba(220, 80, 40, 0.6)');
+    glow.addColorStop(1, 'rgba(220, 80, 40, 0)');
+    ctx.beginPath();
+    ctx.arc(bx, by, bc.radius + glowSize, 0, Math.PI * 2);
+    ctx.fillStyle = glow; ctx.fill();
+
+    ctx.shadowColor = '#c04020';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(bx, by, bc.radius, 0, Math.PI * 2);
+    ctx.fillStyle = bc.hurtTimer > 0 ? getColor('#e0a060') : getColor('#a03010');
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    const barW = 100, barH = 12;
+    const barX = bx - barW / 2;
+    const barY = by - bc.radius - 22;
+    const hpRatio = bc.hp / bc.maxHp;
+    ctx.fillStyle = "#992222"; ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = "#ff5522"; ctx.fillRect(barX, barY, barW * hpRatio, barH);
+    ctx.strokeStyle="#fff"; ctx.lineWidth=1;
+    ctx.strokeRect(barX, barY, barW, barH);
+  }
+
+  if(!boogerMonster.dead || boogerMonster.deathAnimTimer > 0){
+    const msx = boogerMonster.x - camera.x;
+    const msy = boogerMonster.y - camera.y;
+    const dt = boogerMonster.deathAnimTimer > 0
+      ? 1 - boogerMonster.deathAnimTimer / boogerMonster.deathAnimTotal : 0;
+    const alpha = boogerMonster.deathAnimTimer > 0 ? Math.max(0, 1 - dt) : 1;
+    ctx.globalAlpha = alpha;
+
+    const glowSize = 18 + (boogerMonster.deathAnimTimer > 0 ? 40 * dt : 0);
+    const glow = ctx.createRadialGradient(msx, msy, boogerMonster.radius, msx, msy, boogerMonster.radius + glowSize);
+    glow.addColorStop(0, boogerMonster.deathAnimTimer > 0
+      ? `rgba(255, 240, 180, ${0.9 * (1 - dt)})`
+      : 'rgba(112, 66, 20, 0.45)');
+    glow.addColorStop(1, 'rgba(112, 66, 20, 0)');
+    ctx.beginPath();
+    ctx.arc(msx, msy, boogerMonster.radius + glowSize, 0, Math.PI * 2);
+    ctx.fillStyle = glow; ctx.fill();
+
+    ctx.shadowColor = boogerMonster.deathAnimTimer > 0 ? '#fff0b0' : '#7a431b';
+    ctx.shadowBlur = boogerMonster.deathAnimTimer > 0 ? 30 : 12;
+    ctx.beginPath();
+    ctx.arc(msx, msy, boogerMonster.radius, 0, Math.PI * 2);
+    if(boogerMonster.deathAnimTimer > 0){
+      const bright = Math.floor(255 * (1 - dt * 0.4));
+      ctx.fillStyle = `rgb(${bright}, ${bright}, ${Math.min(255, bright + 40)})`;
+    }else{
+      ctx.fillStyle = getColor(boogerMonster.stunTimer>0 ? "#b88648" : '#704214');
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+
+    if(!boogerMonster.dead){
+      const barW = 160, barH = 16;
+      const barX = msx - barW / 2;
+      const barY = msy - boogerMonster.radius - 30;
+      const hpRatio = boogerMonster.hp / boogerMonster.maxHp;
+      ctx.fillStyle = "#992222"; ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = "#22bb22"; ctx.fillRect(barX, barY, barW * hpRatio, barH);
+      ctx.strokeStyle="#fff"; ctx.lineWidth=2;
+      ctx.strokeRect(barX, barY, barW, barH);
+    }
+  }
+
+  for(const sm of smallMonsters){
+    const sx = sm.x - camera.x;
+    const sy = sm.y - camera.y;
+    if(sx < -60 || sx > canvas.width + 60 || sy < -60 || sy > canvas.height + 60) continue;
+    const isSpawning = sm.spawnAnimTimer > 0;
+    const t = isSpawning ? 1 - sm.spawnAnimTimer / sm.spawnAnimTotal : 1;
+    const alpha = isSpawning ? 0.4 + 0.6 * t : 1;
+    ctx.globalAlpha = alpha;
+
+    const glow = ctx.createRadialGradient(sx, sy, sm.radius, sx, sy, sm.radius + 14);
+    if(sm.isElite){
+      glow.addColorStop(0, isSpawning ? 'rgba(255,120,255,0.9)' : 'rgba(180, 60, 220, 0.5)');
+    }else{
+      glow.addColorStop(0, isSpawning ? 'rgba(255,220,120,0.9)' : 'rgba(112, 66, 20, 0.4)');
+    }
+    glow.addColorStop(1, 'rgba(112, 66, 20, 0)');
+    ctx.beginPath();
+    ctx.arc(sx, sy, sm.radius + 14, 0, Math.PI * 2);
+    ctx.fillStyle = glow; ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(sx, sy, sm.radius, 0, Math.PI * 2);
+    if(isSpawning){
+      const bright = Math.floor(200 + 55 * t);
+      ctx.fillStyle = `rgb(${bright}, ${bright - 40}, 80)`;
+    }else if(sm.isElite){
+      ctx.fillStyle = sm.hurtTimer > 0 ? getColor('#e0a0ff') : getColor('#9b3fd6');
+    }else{
+      ctx.fillStyle = sm.hurtTimer > 0 ? getColor('#b88648') : getColor('#704214');
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    if(!isSpawning){
+      const w = sm.isElite ? 60 : 40;
+      const h = sm.isElite ? 7 : 5;
+      const bx = sx - w / 2;
+      const by = sy - sm.radius - 10;
+      const ratio = sm.hp / sm.maxHp;
+      ctx.fillStyle = '#992222';
+      ctx.fillRect(bx, by, w, h);
+      ctx.fillStyle = sm.isElite ? '#dd44ff' : '#22bb22';
+      ctx.fillRect(bx, by, w * ratio, h);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, w, h);
+    }
+  }
+
+  const psx = player.x - camera.x;
+  const psy = player.y - camera.y;
+  const pRadius = player.radius * cheats.playerSize;
+  const pGlowSize = 10;
+  const pGlow = ctx.createRadialGradient(psx, psy, pRadius, psx, psy, pRadius + pGlowSize);
+  pGlow.addColorStop(0, 'rgba(52, 142, 222, 0.55)');
+  pGlow.addColorStop(0.5, 'rgba(52, 142, 222, 0.3)');
+  pGlow.addColorStop(1, 'rgba(52, 142, 222, 0)');
+  ctx.beginPath();
+  ctx.arc(psx, psy, pRadius + pGlowSize, 0, Math.PI * 2);
+  ctx.fillStyle = pGlow; ctx.fill();
+
+  if(!cheats.invisible){
+    ctx.shadowColor = '#348ede';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(psx, psy, pRadius, 0, Math.PI * 2);
+    if(player.hurtTimer > 0 && Math.floor(player.hurtTimer / 3) %2 ===0){
+      ctx.fillStyle = getColor('#ffffff');
+    }else{
+      ctx.fillStyle = getColor('#348ede');
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }else{
+    ctx.beginPath();
+    ctx.arc(psx, psy, pRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(150,200,255,0.4)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if(player.invincibleTimer > 0 && !cheats.invincible){
+    const pulse = 0.3 + 0.3 * Math.sin(performance.now()/80);
+    ctx.beginPath();
+    ctx.arc(psx, psy, pRadius + 6, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,255,255,${pulse})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  if(player.shieldTimer>0){
+    ctx.beginPath();
+    ctx.arc(psx, psy, pRadius+8, 0, Math.PI*2);
+    ctx.strokeStyle="rgba(255,255,100,0.7)";
+    ctx.lineWidth=3; ctx.stroke();
+  }
+
+  if(cheats.invincible){
+    ctx.beginPath();
+    ctx.arc(psx, psy, pRadius + 14, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(139,226,107,0.9)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if(cheats.showHitbox){
+    ctx.beginPath();
+    ctx.arc(psx, psy, pRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(0,255,255,0.8)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  for(const t of damageTexts){
+    const tx = t.x - camera.x;
+    const ty = t.y - camera.y;
+    ctx.globalAlpha = Math.max(0, t.life / 70);
+    ctx.font = "bold 22px Arial";
+    ctx.textAlign = "center";
+    ctx.fillStyle = t.isPlayerDamage ? "#ff4444" : "#ffdd00";
+    ctx.fillText(t.text, tx, ty);
+  }
+  ctx.globalAlpha = 1;
+
+  if(combo > 0){
+    ctx.font = "bold 32px Arial";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffaa00";
+    ctx.shadowColor = "#ff5500";
+    ctx.shadowBlur = 12;
+    ctx.fillText(combo + " 连击!", canvas.width / 2, 90);
+    ctx.shadowBlur = 0;
+  }
+
+  if(cheats.showHitbox){
+    for(const sm of smallMonsters){
+      ctx.beginPath();
+      ctx.arc(sm.x - camera.x, sm.y - camera.y, sm.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,100,100,0.6)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    for(const bc of bossClones){
+      ctx.beginPath();
+      ctx.arc(bc.x - camera.x, bc.y - camera.y, bc.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,100,255,0.6)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    if(!boogerMonster.dead){
+      ctx.beginPath();
+      ctx.arc(boogerMonster.x - camera.x, boogerMonster.y - camera.y, boogerMonster.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,200,100,0.8)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+
+  if(!boogerMonster.dead && !cheats.invincible && !cheats.invisible){
+    const rr = pRadius + boogerMonster.radius;
+    const hitD2 = dist2(player.x, player.y, boogerMonster.x, boogerMonster.y);
+    if(hitD2 < rr * rr && player.shieldTimer <= 0){
+      endGame("被巨型鼻屎怪抓住！游戏结束");
+      return;
+    }
+  }
+
+  if(boogerMonster.dead){
+    smallCountEl.textContent = smallMonsters.length;
+  }
+
+  if(cheats.showFps || cheats.showStats){
+    let text = "";
+    if(cheats.showFps) text += `FPS: ${fpsCurrent}\n`;
+    if(cheats.showStats){
+      text += `小怪: ${smallMonsters.length}\n`;
+      text += `分身: ${bossClones.length}\n`;
+      text += `玩家子弹: ${playerBullets.length}\n`;
+      text += `敌子弹: ${boogerBullets.length + smallBullets.length}\n`;
+      text += `粒子: ${particles.length}\n`;
+      text += `连击: ${combo}`;
+    }
+    debugHud.textContent = text;
+    debugHud.style.display = 'block';
+  }else{
+    debugHud.style.display = 'none';
+  }
+
+  if(++minimapTick % 3 === 0){
+    drawMinimap();
+  }
+}
+
+/* ==================================================
+   修改器：圆球拖动
+   ================================================== */
+function openCheatPanel(){
+  const r = cheatBtn.getBoundingClientRect();
+  cheatPanel.style.left = Math.min(r.left, window.innerWidth - 360) + 'px';
+  cheatPanel.style.top = (r.top + 64) + 'px';
+  cheatPanel.style.display = 'block';
+}
+function closeCheatPanel(){ cheatPanel.style.display = 'none'; }
+function toggleCheatPanel(){
+  if(cheatPanel.style.display === 'block') closeCheatPanel();
+  else openCheatPanel();
+}
+
+if(cheatBtn){
+  let dragging = false, moved = false;
+  let startX = 0, startY = 0, btnStartX = 0, btnStartY = 0;
+
+  function startDrag(e){
+    e.preventDefault(); e.stopPropagation();
+    dragging = true; moved = false;
+    const p = e.touches ? e.touches[0] : e;
+    startX = p.clientX; startY = p.clientY;
+    const r = cheatBtn.getBoundingClientRect();
+    btnStartX = r.left; btnStartY = r.top;
+    cheatBtn.classList.add('dragging');
+  }
+  function moveDrag(e){
+    if(!dragging) return;
+    e.preventDefault();
+    const p = e.touches ? e.touches[0] : e;
+    const dx = p.clientX - startX;
+    const dy = p.clientY - startY;
+    if(Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
+    let nx = btnStartX + dx;
+    let ny = btnStartY + dy;
+    nx = Math.max(0, Math.min(window.innerWidth - 56, nx));
+    ny = Math.max(0, Math.min(window.innerHeight - 56, ny));
+    cheatBtn.style.left = nx + 'px';
+    cheatBtn.style.top = ny + 'px';
+    if(cheatPanel.style.display === 'block'){
+      cheatPanel.style.left = Math.min(nx, window.innerWidth - 360) + 'px';
+      cheatPanel.style.top = (ny + 64) + 'px';
+    }
+  }
+  function endDrag(e){
+    if(!dragging) return;
+    dragging = false;
+    cheatBtn.classList.remove('dragging');
+    if(!moved){ playSfx('click', 30); toggleCheatPanel(); }
+  }
+  cheatBtn.addEventListener('mousedown', startDrag);
+  cheatBtn.addEventListener('touchstart', startDrag, {passive:false});
+  document.addEventListener('mousemove', moveDrag);
+  document.addEventListener('touchmove', moveDrag, {passive:false});
+  document.addEventListener('mouseup', endDrag);
+  document.addEventListener('touchend', endDrag);
+  document.addEventListener('touchcancel', endDrag);
+}
+
+/* ==================================================
+   作弊配置表
+   ================================================== */
+const TOGGLE_MAP = {
+  c_invincible: 'invincible',
+  c_infiniteAmmo: 'infiniteAmmo',
+  c_oneShot: 'oneShot',
+  c_allItems: 'allItems',
+  c_autoFire: 'autoFire',
+  c_invisible: 'invisible',
+  c_infShield: 'infShield',
+  c_reflect: 'reflect',
+  c_freeze: 'freeze',
+  c_showFps: 'showFps',
+  c_showStats: 'showStats',
+  c_showHitbox: 'showHitbox',
+  c_nightVision: 'nightVision',
+  c_rainbow: 'rainbow',
+  c_infCombo: 'infCombo'
+};
+
+function bindToggle(inputId, key){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  input.addEventListener('click', e=>e.stopPropagation());
+  input.addEventListener('change', ()=>{
+    cheats[key] = input.checked;
+    playSfx('click', 30);
+  });
+}
+Object.entries(TOGGLE_MAP).forEach(([id, key]) => bindToggle(id, key));
+
+const allItemsInput = document.getElementById('c_allItems');
+const allItemsSub = document.getElementById('allItemsSub');
+if(allItemsInput && allItemsSub){
+  allItemsInput.addEventListener('change', ()=>{
+    if(allItemsInput.checked) allItemsSub.classList.add('open');
+    else allItemsSub.classList.remove('open');
+  });
+}
+
+const ITEM_FLAG_MAP = {
+  ci_heal: 'heal',
+  ci_speed: 'speed',
+  ci_shield: 'shield',
+  ci_explosive: 'explosive',
+  ci_rapid: 'rapid',
+  ci_bomb: 'bomb'
+};
+function bindItemFlag(inputId, key){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  input.addEventListener('click', e=>e.stopPropagation());
+  input.addEventListener('change', ()=>{
+    cheats.itemFlags[key] = input.checked;
+    playSfx('click', 30);
+  });
+}
+Object.entries(ITEM_FLAG_MAP).forEach(([id, key]) => bindItemFlag(id, key));
+
+/* ★ 滑块 + 数字输入框双向绑定 */
+function bindSlider(id, valId, key, fmt = v=>v.toFixed(1)){
+  const s = document.getElementById(id);
+  const v = document.getElementById(valId);
+  const n = document.getElementById(id + 'Num');
+  if(!s) return;
+
+  const min = parseFloat(s.min);
+  const max = parseFloat(s.max);
+
+  function apply(val, from){
+    val = Math.max(min, Math.min(max, val));
+    if(isNaN(val)) val = parseFloat(s.value);
+    cheats[key] = val;
+    if(from !== 'range') s.value = val;
+    if(n && from !== 'number') n.value = val.toFixed(1);
+    if(v) v.textContent = fmt(val);
+  }
+
+  s.addEventListener('input', ()=> apply(parseFloat(s.value), 'range'));
+
+  if(n){
+    n.addEventListener('input', ()=>{
+      const raw = parseFloat(n.value);
+      if(!isNaN(raw)) apply(raw, 'number');
+    });
+    n.addEventListener('blur', ()=>{
+      const raw = parseFloat(n.value);
+      if(isNaN(raw)){ apply(parseFloat(s.value), 'other'); }
+      else { apply(raw, 'other'); }
+    });
+    n.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){ n.blur(); }
+    });
+  }
+}
+bindSlider('c_playerSize', 'c_playerSizeVal', 'playerSize');
+bindSlider('c_bulletSpeed', 'c_bulletSpeedVal', 'bulletSpeed');
+bindSlider('c_gameSpeed', 'c_gameSpeedVal', 'gameSpeed');
+bindSlider('c_monsterSpeed', 'c_monsterSpeedVal', 'monsterSpeed');
+bindSlider('c_monsterHp', 'c_monsterHpVal', 'monsterHp');
+
+/* ★ 动态生成武器按钮 */
+const weaponGrid = document.getElementById('weaponGrid');
+if(weaponGrid){
+  WEAPON_KEYS.forEach(k=>{
+    const btn = document.createElement('button');
+    btn.id = 'w_' + k;
+    btn.textContent = WEAPONS[k].name;
+    if(k === 'pistol') btn.classList.add('active');
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      playSfx('click', 30);
+      switchWeapon(k);
+    });
+    weaponGrid.appendChild(btn);
+  });
+}
+
+/* 召唤器 */
+const summonSelect = document.getElementById('summonSelect');
+const summonBtn = document.getElementById('summonBtn');
+if(summonBtn){
+  summonBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    playSfx('click', 30);
+    if(!gameRunning || gameEnded) return;
+    const type = summonSelect ? summonSelect.value : 'small';
+    const px = player.x, py = player.y;
+    function randPos(radius){
+      const a = Math.random() * Math.PI * 2;
+      return { x: px + Math.cos(a) * radius, y: py + Math.sin(a) * radius };
+    }
+    if(type === 'small'){
+      const p = randPos(200); spawnSmallMonsterAt(p.x, p.y);
+      spawnDamageText(px, py - 40, "召唤小怪!", false);
+    }else if(type === 'elite'){
+      const p = randPos(200); spawnSmallMonsterAt(p.x, p.y, { elite: true });
+      spawnDamageText(px, py - 40, "召唤精英!", false);
+    }else if(type === 'boss'){
+      const p = randPos(300); spawnBossAt(p.x, p.y);
+      spawnDamageText(px, py - 40, "召唤 Boss!", false);
+    }else if(type === 'bossClone'){
+      const p = randPos(350); spawnBossClone(p.x, p.y);
+      spawnDamageText(px, py - 40, "召唤分身!", false);
+    }else if(type === 'bossPlus'){
+      const p = randPos(300); spawnBossAt(p.x, p.y);
+      for(let i = 0; i < 5; i++){ const p2 = randPos(250); spawnSmallMonsterAt(p2.x, p2.y); }
+      spawnDamageText(px, py - 40, "Boss + 小怪!", false);
+    }else if(type === 'bossArmy'){
+      for(let i = 0; i < 5; i++){ const p = randPos(350 + i * 30); spawnBossClone(p.x, p.y); }
+      spawnDamageText(px, py - 40, "分身军团!", false);
+    }
+  });
+}
+
+/* 常规操作 */
+const cKillBoss = document.getElementById('c_killBoss');
+if(cKillBoss) cKillBoss.addEventListener('click', (e)=>{ e.stopPropagation(); playSfx('click',30); killBossNow(); });
+const cClearSmall = document.getElementById('c_clearSmall');
+if(cClearSmall) cClearSmall.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  for(const sm of smallMonsters) spawnExplosion(sm.x, sm.y);
+  smallMonsters.length = 0;
+});
+const cClearClones = document.getElementById('c_clearClones');
+if(cClearClones) cClearClones.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  for(const bc of bossClones) spawnExplosion(bc.x, bc.y);
+  bossClones.length = 0;
+});
+const cClearBullets = document.getElementById('c_clearBullets');
+if(cClearBullets) cClearBullets.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  playerBullets.length = 0; boogerBullets.length = 0; smallBullets.length = 0;
+});
+const cClearMines = document.getElementById('c_clearMines');
+if(cClearMines) cClearMines.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  boogerMines.length = 0;
+});
+const cClearParticles = document.getElementById('c_clearParticles');
+if(cClearParticles) cClearParticles.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  particles.length = 0; damageTexts.length = 0; bombBlasts.length = 0;
+});
+const cTpBoss = document.getElementById('c_tpBoss');
+if(cTpBoss) cTpBoss.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  if(!boogerMonster.dead){ player.x = boogerMonster.x + 100; player.y = boogerMonster.y + 100; }
+});
+const cFullHp = document.getElementById('c_fullHp');
+if(cFullHp) cFullHp.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  player.hp = player.maxHp; hpText.textContent = player.hp;
+});
+const cTpRandom = document.getElementById('c_tpRandom');
+if(cTpRandom) cTpRandom.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  player.x = Math.random() * (MAP_WIDTH - 200) + 100;
+  player.y = Math.random() * (MAP_HEIGHT - 200) + 100;
+});
+const cTpXY = document.getElementById('c_tpXY');
+if(cTpXY) cTpXY.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  const x = parseFloat(document.getElementById('c_tpX').value) || 0;
+  const y = parseFloat(document.getElementById('c_tpY').value) || 0;
+  player.x = Math.max(20, Math.min(MAP_WIDTH - 20, x));
+  player.y = Math.max(20, Math.min(MAP_HEIGHT - 20, y));
+});
+const cAttract = document.getElementById('c_attract');
+if(cAttract) cAttract.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  for(const sm of smallMonsters){
+    const a = Math.random() * Math.PI * 2;
+    sm.x = player.x + Math.cos(a) * 150;
+    sm.y = player.y + Math.sin(a) * 150;
+  }
+  for(const bc of bossClones){
+    const a = Math.random() * Math.PI * 2;
+    bc.x = player.x + Math.cos(a) * 200;
+    bc.y = player.y + Math.sin(a) * 200;
+  }
+  if(!boogerMonster.dead){
+    const a = Math.random() * Math.PI * 2;
+    boogerMonster.x = player.x + Math.cos(a) * 250;
+    boogerMonster.y = player.y + Math.sin(a) * 250;
+  }
+});
+const cNextWave = document.getElementById('c_nextWave');
+if(cNextWave) cNextWave.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  if(boogerMonster.dead && boogerMonster.deathWaveIndex < DEATH_WAVES){
+    spawnSmallMonstersFromBoss(SUMMON_PER_WAVE);
+    boogerMonster.deathWaveIndex++;
+  }
+});
+const cWin = document.getElementById('c_win');
+if(cWin) cWin.addEventListener('click', (e)=>{
+  e.stopPropagation(); playSfx('click',30);
+  killBossNow();
+  smallMonsters.length = 0;
+  bossClones.length = 0;
+  boogerMonster.deathWaveIndex = DEATH_WAVES;
+  boogerMonster.deathAnimTimer = 0;
+  setTimeout(()=>endGame("作弊胜利！"), 100);
+});
+
+/* ★ 重置全部作弊 */
+const cResetAll = document.getElementById('c_resetAll');
+if(cResetAll){
+  cResetAll.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    playSfx('click', 30);
+    if(!confirm('确定要重置所有作弊项吗？')) return;
+
+    /* 1. 重置布尔项 */
+    cheats.invincible = false;
+    cheats.infiniteAmmo = false;
+    cheats.oneShot = false;
+    cheats.allItems = false;
+    cheats.autoFire = false;
+    cheats.invisible = false;
+    cheats.infShield = false;
+    cheats.reflect = false;
+    cheats.freeze = false;
+    cheats.showFps = false;
+    cheats.showStats = false;
+    cheats.showHitbox = false;
+    cheats.nightVision = false;
+    cheats.rainbow = false;
+    cheats.infCombo = false;
+
+    /* 2. 重置常驻道具子项 */
+    cheats.itemFlags.heal = false;
+    cheats.itemFlags.speed = false;
+    cheats.itemFlags.shield = false;
+    cheats.itemFlags.explosive = false;
+    cheats.itemFlags.rapid = false;
+    cheats.itemFlags.bomb = false;
+
+    /* 3. 重置数值项 */
+    cheats.playerSize = 1.0;
+    cheats.bulletSpeed = 1.0;
+    cheats.gameSpeed = 1.0;
+    cheats.monsterSpeed = 1.0;
+    cheats.monsterHp = 1.0;
+    cheats.speedMul = 1.0;
+
+    /* 4. 同步所有 UI */
+    document.querySelectorAll('#cheatPanel input[type=checkbox]').forEach(cb=>{
+      cb.checked = false;
+    });
+
+    const sliderDefaults = {
+      c_playerSize: 1, c_bulletSpeed: 1,
+      c_gameSpeed: 1, c_monsterSpeed: 1, c_monsterHp: 1
+    };
+    Object.entries(sliderDefaults).forEach(([id, def])=>{
+      const s = document.getElementById(id);
+      const n = document.getElementById(id + 'Num');
+      const v = document.getElementById(id + 'Val');
+      if(s) s.value = def;
+      if(n) n.value = def.toFixed(1);
+      if(v) v.textContent = def.toFixed(1);
+    });
+
+    const sub = document.getElementById('allItemsSub');
+    if(sub) sub.classList.remove('open');
+
+    switchWeapon('pistol');
+    recalcPlayerSpeed();
+
+    spawnDamageText(player.x, player.y - 40, "已重置!", false);
+  });
+}
+
+if(cheatPanel){
+  cheatPanel.addEventListener('mousedown', e=>e.stopPropagation());
+  cheatPanel.addEventListener('touchstart', e=>e.stopPropagation(), {passive:true});
+}
+
+document.addEventListener('click', (e)=>{
+  const t = e.target;
+  if(t && t.tagName === 'BUTTON') playSfx('click', 30);
+}, true);
+
+/* ==================================================
+   开始游戏
+   ================================================== */
+function startGame(){
+  if(!musicReady) return;
+  gameEnded = false;
+  homeScreen.style.display = 'none';
+  gameScreen.style.display = 'block';
+  resetGame();
+  gameRunning = true;
+  requestAnimationFrame(()=>{ resizeCanvas(); });
+  switchBgm('game');
+}
+
+startBtn.addEventListener('click', startGame);
+startBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startGame(); }, { passive: false });
+
+homeBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  gameRunning = false; gameEnded = false;
+  gameScreen.style.display = 'none';
+  homeScreen.style.display = 'flex';
+  resetGame();
+  switchBgm('home');
+});
+
+resizeCanvas();
+gameLoop();
+</script>
+</body>
+</html>
