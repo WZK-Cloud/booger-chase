@@ -1214,7 +1214,7 @@ function fireWeapon(targetWorldX, targetWorldY){
 
   if(!cheats.infiniteAmmo){
     let cd = w.cd;
-    if(player.rapidTimer > 0) cd = Math.max(6, Math.floor(w.cd / 2));
+    if(player.rapidTimer > 0) cd = 3;
     player.shootCooldown = cd;
   }else{
     player.shootCooldown = 2;
