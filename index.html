@@ -1306,7 +1306,7 @@ function spawnDamageText(x,y,value,isPlayerDamage){
 }
 
 function applyDamageMultiplier(dmg){
-  return cheats.oneShot ? dmg * 1000 : dmg;
+  return cheats.oneShot ? Infinity : dmg;
 }
 
 function killBossNow(){
