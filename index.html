@@ -1501,6 +1501,7 @@ function resetGame(){
   boogerMonster.summonWaveIndex = 0;
   boogerMonster.summonWaveTimer = 0;
   boogerMonster.stunTimer = 0;
+  boogerMonster.maxHp = 500;
   boogerMonster.hp = boogerMonster.maxHp;
   boogerMonster.dead = false;
   boogerMonster.deathAnimTimer = 0;
@@ -2301,10 +2302,12 @@ function gameLoop(){
     }
   }
 
-  if(boogerMonster.dead && boogerMonster.deathWaveIndex >= DEATH_WAVES
-     && boogerMonster.deathAnimTimer <= 0 && smallMonsters.length === 0 && bossClones.length === 0){
-    boogerMonster.wave++;
-    boogerMonster.waveCooldown = 120;
+  if(boogerMonster.dead && boogerMonster.deathAnimTimer <= 0
+    && smallMonsters.length === 0 && bossClones.length === 0){
+    if(boogerMonster.waveCooldown <= 0){
+      boogerMonster.wave++;
+      boogerMonster.waveCooldown = 120;
+    }
   }
 
   for(let i = boogerMines.length - 1; i >= 0; i--){
